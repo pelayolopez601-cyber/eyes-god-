@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(recent-imagery): reject absent box edges instead of inventing zero degrees
+
+Reject absent, blank and boolean edges before numeric conversion while retaining valid finite numbers and numeric strings. Invalid boxes remain explicit invalid results instead of false geometry.
