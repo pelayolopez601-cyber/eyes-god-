@@ -1,5 +1,7 @@
 # Changelog
 
+- Fire acquisition times remain unknown when their source calendar day or clock time is invalid.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
