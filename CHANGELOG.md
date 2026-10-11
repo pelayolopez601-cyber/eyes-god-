@@ -1,5 +1,7 @@
 # Changelog
 
+- Fire detections with missing or impossible positions are skipped while genuine zero coordinates remain valid.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

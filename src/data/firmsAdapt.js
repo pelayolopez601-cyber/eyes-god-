@@ -21,7 +21,18 @@ export function adaptFirmsRecords(records) {
   for (const record of records) {
     const lat = Number(record?.lat);
     const lon = Number(record?.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (
+      ![record?.lat, record?.lon].every(
+        (value) =>
+          typeof value === 'number' ||
+          (typeof value === 'string' && value.trim() !== ''),
+      ) ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lon) > 180
+    )
+      continue;
     fires.push({
       index: fires.length,
       lat,

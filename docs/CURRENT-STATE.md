@@ -5123,3 +5123,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(firms): reject missing and out-of-range detection coordinates
+
+Require explicit numeric coordinate evidence and WGS84 ranges in both ingestion paths, preserving genuine zero coordinates and sequential admitted detection indices.
