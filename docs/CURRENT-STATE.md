@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(director): seek camera longitude across the shortest dateline arc
+
+Interpolate longitude with the existing shortest-angle easing, normalize intermediate longitudes, and preserve exact authored endpoints at progress zero and one.

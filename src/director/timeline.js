@@ -45,7 +45,13 @@ export function cameraAtProgress(fromCamera, toCamera, progress) {
   };
   return {
     lat: lerp(source.lat, target.lat),
-    lon: lerp(source.lon, target.lon),
+    lon:
+      t === 0
+        ? Number(source.lon)
+        : t === 1
+          ? Number(target.lon)
+          : ((((lerpAngle(source.lon, target.lon) + 180) % 360) + 360) % 360) -
+            180,
     alt: lerp(source.alt, target.alt),
     heading: lerpAngle(source.heading, target.heading),
     pitch: lerp(source.pitch, target.pitch),
