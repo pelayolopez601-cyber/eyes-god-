@@ -1,5 +1,7 @@
 # Changelog
 
+- Infrastructure features crossing the dateline retain a representative position near their geometry.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
