@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(terrain): validate complete coordinate batches before requesting heights
+
+Validate every point before transport, preserve valid WGS84 boundary coordinates, and return an empty result locally for an empty batch.
