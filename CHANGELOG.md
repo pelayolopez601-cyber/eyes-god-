@@ -1,5 +1,7 @@
 # Changelog
 
+- Street Level requests count each tile once when dateline bounds overlap at coarse zoom levels.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

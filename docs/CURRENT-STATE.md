@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(street-level): deduplicate overlapping dateline tile halves
+
+Deduplicate tile addresses before ranking, truncating and reporting total coverage. Dateline ordering and the existing focus policy remain in control.
