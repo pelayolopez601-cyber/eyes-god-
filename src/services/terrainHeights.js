@@ -273,7 +273,7 @@ export function createTerrainHeights({
     const seenKeys = new Set();
     const now = Date.now();
     for (const item of work) {
-      const entry = cache.get(item.key);
+      const entry = cacheTouch(item.key);
       const fallbackCooling =
         entry?.source === 'geoid-fallback' &&
         Number.isFinite(entry.retryAt) &&

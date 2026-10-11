@@ -1,5 +1,7 @@
 # Changelog
 
+- Frequently reused terrain batches retain their cached heights ahead of unused cells.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
