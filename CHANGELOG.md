@@ -1,5 +1,7 @@
 # Changelog
 
+- Tool string length validation counts Unicode characters correctly, including characters outside the basic multilingual plane.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

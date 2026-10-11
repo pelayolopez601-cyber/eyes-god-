@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(tools): enforce string schema lengths by Unicode code point
+
+Count code points for minLength and maxLength, preserving ASCII behavior and regular-expression validation.
