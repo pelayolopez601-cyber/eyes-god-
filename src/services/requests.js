@@ -79,10 +79,13 @@ export function createApplicationRequestServices({
     boundaryCapability = request(`${urls.boundaries}/status`, {
       signal: AbortSignal.timeout(boundaryProbe.timeoutMs),
     }).then(
-      (response) =>
-        response.ok && typeof response.data?.configured === 'boolean'
-          ? response.data.configured
-          : null, // an older server: fall back to asking per query
+      (response) => {
+        if (response.ok && typeof response.data?.configured === 'boolean')
+          return response.data.configured;
+        boundaryCapability = null;
+        boundaryProbeRetryAt = Date.now() + boundaryProbe.retryMs;
+        return null; // an older server: fall back to asking per query
+      },
       (error) => {
         boundaryCapability = null;
         if (lifetime?.aborted) throw error;
