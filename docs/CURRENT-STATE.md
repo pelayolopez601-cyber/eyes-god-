@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(cctv): leave conflicting direction fields unresolved
+
+Collect recognized headings and resolve only a single distinct heading; repeated equivalent wording remains valid and the existing bare-cardinal modes remain intact.
