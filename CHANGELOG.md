@@ -1,5 +1,7 @@
 # Changelog
 
+- Modal keyboard navigation skips controls excluded from tab order, disabled fieldsets and inert content.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

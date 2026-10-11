@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(a11y): exclude negative-tabindex and inert controls from surface cycling
+
+Filter queried controls by explicit negative tabindex, native disabled matching and inert ancestry before selecting the Tab-cycle boundaries. Ordinary visible enabled controls keep their order.
