@@ -1,5 +1,7 @@
 # Changelog
 
+- Cancelled tool calls refuse actions before execution and discard results that settle after cancellation.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

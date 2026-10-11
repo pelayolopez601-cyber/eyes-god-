@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(tools): stop cancelled calls before execution and discard late results
+
+Check cancellation before invoking the tool and after it resolves, including nested calls that share the same signal. This does not promise rollback of an action already completed.
