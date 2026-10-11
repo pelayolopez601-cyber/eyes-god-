@@ -5123,3 +5123,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(imagery): paginate raw CMR pages within the record budget
+
+Use raw page size to detect completion, bound raw rows examined, and slice admitted results to the remaining record allowance. Truncation still compares admitted records with upstream hits.
