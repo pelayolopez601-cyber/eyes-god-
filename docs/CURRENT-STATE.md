@@ -5127,3 +5127,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(weather): keep absent observations unknown instead of reporting clear skies
+
+Refuse absent or boolean primary temperatures and keep absent/boolean weather codes explicitly CONDITIONS UNKNOWN while retaining valid numeric strings and real zero observations.
