@@ -1,5 +1,7 @@
 # Changelog
 
+- Director assets cancelled during the final stream read are discarded with reader cleanup.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
