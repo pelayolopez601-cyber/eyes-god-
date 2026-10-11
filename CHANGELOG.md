@@ -1,5 +1,7 @@
 # Changelog
 
+- Map state updates stop delivering to subscribers removed during the same notification.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
