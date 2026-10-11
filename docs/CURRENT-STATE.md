@@ -5123,3 +5123,8 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+
+### fix(imagery): require explicit Data-Present proof before decoding thumbnails
+
+Decode only when Data-Present is true; explicit false remains empty and absent or malformed evidence remains an error rather than an invented observation.
