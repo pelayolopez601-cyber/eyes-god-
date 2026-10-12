@@ -65,7 +65,7 @@ export async function fetchCmrPages({
     )
       break;
   }
-  return { granules, truncated: hits > granules.length };
+  return { granules, truncated: hits > readCount };
 }
 
 function finiteOrNull(value) {

@@ -31,7 +31,7 @@ test('discarded rows do not turn a full CMR page into a final page', async () =>
   assert.equal(calls, 2);
   assert.equal(result.granules.length, 200);
   assert.equal(result.granules.at(-1).id, 'last');
-  assert.equal(result.truncated, true);
+  assert.equal(result.truncated, false);
 });
 test('a non-page-multiple limit never returns more admitted records than its budget', async () => {
   let calls = 0;
