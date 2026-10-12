@@ -1131,6 +1131,10 @@ a browser key. Preview is for local build verification, not a production server.
 
 ## CCTV and radio provider modules
 
+Each CCTV direction-text field resolves only when it identifies one distinct
+heading. Conflicting recognized headings remain unknown; repeated equivalent
+wording and the existing bare-cardinal modes remain supported.
+
 CCTV catalog acquisition, source normalization and frame/media delivery now live
 in separate modules. Each CCTV factory owns its catalog and health state; its
 `sourceRoot` option resolves relative source files against the application root.
@@ -5127,8 +5131,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(cctv): leave conflicting direction fields unresolved
-
-Collect recognized headings and resolve only a single distinct heading; repeated equivalent wording remains valid and the existing bare-cardinal modes remain intact.
