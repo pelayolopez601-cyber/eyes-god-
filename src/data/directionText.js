@@ -28,26 +28,34 @@ export function directionToHeading(value, allowBare = false) {
     .trim()
     .toUpperCase();
   if (!text) return NaN;
-  const headings = new Set();
-  const forms = [
-    [/\bNORTHBOUND\b|\bNB\b/, 0],
-    [/\bSOUTHBOUND\b|\bSB\b/, 180],
-    [/\bEASTBOUND\b|\bEB\b/, 90],
-    [/\bWESTBOUND\b|\bWB\b/, 270],
-    [/\bNORTHEAST\b|\bNE\b/, 45],
-    [/\bNORTHWEST\b|\bNW\b/, 315],
-    [/\bSOUTHEAST\b|\bSE\b/, 135],
-    [/\bSOUTHWEST\b|\bSW\b/, 225],
+  const tiers = [
+    [
+      [/\bNORTHBOUND\b|\bNB\b/, 0],
+      [/\bSOUTHBOUND\b|\bSB\b/, 180],
+      [/\bEASTBOUND\b|\bEB\b/, 90],
+      [/\bWESTBOUND\b|\bWB\b/, 270],
+    ],
+    [
+      [/\bNORTHEAST\b|\bNE\b/, 45],
+      [/\bNORTHWEST\b|\bNW\b/, 315],
+      [/\bSOUTHEAST\b|\bSE\b/, 135],
+      [/\bSOUTHWEST\b|\bSW\b/, 225],
+    ],
   ];
   if (allowBare)
-    forms.push(
+    tiers.push([
       [/\bNORTH\b/, 0],
       [/\bSOUTH\b/, 180],
       [/\bEAST\b/, 90],
       [/\bWEST\b/, 270],
-    );
-  for (const [pattern, heading] of forms) {
-    if (pattern.test(text)) headings.add(heading);
+    ]);
+  for (const forms of tiers) {
+    const headings = new Set();
+    for (const [pattern, heading] of forms) {
+      if (pattern.test(text)) headings.add(heading);
+    }
+    if (headings.size)
+      return headings.size === 1 ? headings.values().next().value : NaN;
   }
-  return headings.size === 1 ? headings.values().next().value : NaN;
+  return NaN;
 }

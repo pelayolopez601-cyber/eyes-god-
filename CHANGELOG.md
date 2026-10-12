@@ -1,6 +1,6 @@
 # Changelog
 
-- CCTV direction fields containing conflicting headings remain unresolved.
+- Conflicting CCTV direction tokens remain unknown within the highest matching tier, preserving travel-token precedence over street quadrants and bare words.
 
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.

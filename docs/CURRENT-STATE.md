@@ -1131,9 +1131,10 @@ a browser key. Preview is for local build verification, not a production server.
 
 ## CCTV and radio provider modules
 
-Each CCTV direction-text field resolves only when it identifies one distinct
-heading. Conflicting recognized headings remain unknown; repeated equivalent
-wording and the existing bare-cardinal modes remain supported.
+CCTV direction text resolves travel tokens first, then intercardinals, then
+bare cardinals when enabled. Only conflicting headings within the highest
+matching tier remain unknown; street quadrants and lower-tier words do not
+cancel an explicit travel heading.
 
 CCTV catalog acquisition, source normalization and frame/media delivery now live
 in separate modules. Each CCTV factory owns its catalog and health state; its
