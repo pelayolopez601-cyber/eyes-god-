@@ -1,6 +1,6 @@
 # Changelog
 
-- Modal keyboard navigation skips controls excluded from tab order, disabled fieldsets and inert content.
+- Surface Tab cycling also skips negative-tabindex, fieldset-disabled and inert controls.
 
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.

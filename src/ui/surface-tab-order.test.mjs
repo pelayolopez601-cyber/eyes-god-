@@ -8,21 +8,25 @@ test('surface cycling never targets deliberately excluded controls', () => {
     addEventListener: (_, fn) => (handler = fn),
     removeEventListener() {},
   };
-  const node = (extra) => ({
-    hasAttribute: () => false,
+  const node = ({
+    attributes = {},
+    fieldsetDisabled = false,
+    inert = false,
+  } = {}) => ({
+    hasAttribute: (name) => Object.hasOwn(attributes, name),
     getClientRects: () => [{}],
-    getAttribute: () => null,
-    matches: () => false,
-    closest: () => null,
+    getAttribute: (name) => attributes[name] ?? null,
+    matches: (selector) => selector === ':disabled' && fieldsetDisabled,
+    closest: (selector) =>
+      selector === '[inert]' && inert ? { inert: true } : null,
     focus() {
       documentRef.activeElement = this;
     },
-    ...extra,
   });
   const ignored = [
-    node({ getAttribute: () => '-1' }),
-    node({ matches: () => true }),
-    node({ closest: () => ({ inert: true }) }),
+    node({ attributes: { tabindex: '-1' } }),
+    node({ fieldsetDisabled: true }),
+    node({ inert: true }),
   ];
   const first = node({}),
     last = node({});

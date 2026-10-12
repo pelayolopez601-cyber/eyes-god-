@@ -1032,6 +1032,9 @@ writes. This extraction does not change panel positions or layout defaults.
 
 ## Surface keyboard lifecycle
 
+Surface Tab cycling excludes controls with a negative tabindex, native disabled
+state or inert ancestry; ordinary visible enabled controls retain their order.
+
 `ui/surfaces` owns the capture-phase keyboard listener, Tab cycling and return
 focus shared by the first-run launcher and Provider Settings. Each caller
 activates it while open and deactivates it on dismissal; destruction releases
@@ -1272,9 +1275,6 @@ The submarine-cable renderer is unchanged. These limits bound active stem work;
 they do not reduce the materialized entity count or establish an FPS gain.
 
 ## Keyboard interaction and focus
-
-Surface Tab cycling excludes controls with a negative tabindex, native disabled
-state or inert ancestry; ordinary visible enabled controls retain their order.
 
 - Enter on the map-source disclosure opens immediately. A short Space press
   opens it on key release. Either route focuses the selected source once visible;
