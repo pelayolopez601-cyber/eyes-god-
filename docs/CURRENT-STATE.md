@@ -97,6 +97,11 @@ lists at 25 rows by default. Voice offers the same queries next to its app
 actions: the session lists them, and the browser runs them through the same
 catalog, loaded on first use. See [tools and the MCP server](TOOLS.md).
 
+Catalog calls check their cancellation signal before tool execution and after
+the tool resolves, including nested calls. Cancellation discards late catalog
+results without promising rollback of completed actions or invalidating correct
+static-source caches.
+
 ## Cyber HUD — September 30, 2026
 
 Display > HUD > Layout includes Cyber, also available through the HUD voice
@@ -5127,8 +5132,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(tools): stop cancelled calls before execution and discard late results
-
-Check cancellation before invoking the tool and after it resolves, including nested calls that share the same signal. This does not promise rollback of an action already completed.
