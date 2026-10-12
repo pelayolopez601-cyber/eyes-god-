@@ -34,6 +34,109 @@ import {
   withToolCatalog,
 } from './gevRealtime.js';
 import { createVoiceCostTracker } from './voiceCost.js';
+import { responseInstructionForToolResult } from './realtimeProtocol.js';
+
+test('Cockpit Voice Settings refusal asks for an explicit exit without claiming success', () => {
+  const instruction = responseInstructionForToolResult({
+    ok: true,
+    action: 'set_panel_open',
+    panelId: 'voice-settings',
+    open: false,
+    requestedOpen: true,
+    requiresCockpitExit: true,
+    pending: true,
+    expiresInMs: 20_000,
+  });
+  assert.match(instruction, /Would you like me to exit Cockpit/);
+  assert.match(instruction, /do not exit Cockpit without an affirmative reply/i);
+  assert.match(instruction, /do not call set_panel_open again/);
+  assert.match(instruction, /If the user declines/);
+  assert.doesNotMatch(instruction, /20 seconds/);
+  assert.match(instruction, /do not claim that the panel opened/i);
+});
+
+test('settings clarification and panel-order refusals cannot announce a guessed action', () => {
+  const question = responseInstructionForToolResult({
+    panelId: 'settings',
+    requiresClarification: true,
+  });
+  assert.match(question, /Open nothing yet/);
+  assert.match(question, /yes, provider settings/);
+  assert.match(question, /voice-settings and open true/);
+  assert.match(question, /no or cancel/);
+  assert.match(question, /do not open a different panel/);
+  const refusal = responseInstructionForToolResult({
+    action: 'set_voice_panel_order',
+    ok: false,
+  });
+  assert.match(refusal, /No view changed/);
+  assert.match(refusal, /do not enable a disabled preview/);
+  const selected = responseInstructionForToolResult({ action: 'set_voice_panel_order', ok: true, view: 'settings' });
+  assert.match(selected, /returned selected voice view/);
+  assert.match(selected, /not front\/back stacking/);
+});
+
+test('voice view confirmations distinguish selection, target-specific closure and disabled captions', () => {
+  const settings = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-settings',
+    open: true,
+    ok: true,
+  });
+  assert.equal(
+    settings,
+    'For this action, say exactly: “Voice Settings is selected and open.” If another action completed in the same response, also confirm that action briefly. Do not add Preview, captions, preference, visibility, enablement or stacking commentary.',
+  );
+  const preview = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-preview',
+    open: true,
+    ok: true,
+  });
+  assert.match(preview, /Closing an inactive view does not close the selected view/);
+  assert.match(preview, /Selecting Preview does not enable it/);
+  const settingsClose = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-settings',
+    open: false,
+    ok: true,
+  });
+  assert.match(settingsClose, /Closing an inactive view does not close the selected view/);
+  const previewClose = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-preview',
+    open: false,
+    ok: true,
+  });
+  assert.match(previewClose, /Closing an inactive view does not close the selected view/);
+  const missingOpen = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-settings',
+    ok: true,
+  });
+  assert.match(missingOpen, /Closing an inactive view does not close the selected view/);
+  const refusedOpen = responseInstructionForToolResult({
+    action: 'set_panel_open',
+    panelId: 'voice-settings',
+    open: true,
+    ok: false,
+  });
+  assert.match(refusedOpen, /do not claim a voice view opened/);
+  for (const panelId of ['voice-preview', 'voice-settings']) {
+    const failure = responseInstructionForToolResult({ action: 'set_panel_open', panelId, ok: false });
+    assert.match(failure, /do not claim a voice view opened/);
+    assert.match(failure, /Do not exit Cockpit without permission/);
+  }
+});
+
+test('preview preference confirmation distinguishes enablement from visible content', () => {
+  const success = responseInstructionForToolResult({action:'set_voice_preview_enabled',ok:true});
+  assert.match(success, /aloud/);
+  assert.match(success, /persistence warning/);
+  assert.match(success, /Enabled does not mean a card is currently visible/);
+  const failure = responseInstructionForToolResult({action:'set_voice_preview_enabled',ok:false});
+  assert.match(failure, /Do not stop voice or claim the preference changed/);
+});
 
 test('push-to-talk recognizes Space by code or key', () => {
   assert.equal(PUSH_TO_TALK_HOLD_DELAY_MS, 500);
@@ -668,6 +771,198 @@ test('confirmed manual Radio playback closes active voice without stopping Radio
   assert.deepEqual(order, ['voice-stop', 'radio-fade-in']);
   assert.equal(controller.status, 'idle');
   assert.equal(controller.dc, null);
+});
+
+test('pausing a voice-started Radio handoff resumes that voice mode exactly once', async () => {
+  const order = [];
+  const starts = [];
+  let playbackControl = null;
+  const ui = {
+    root: {
+      dataset: {},
+      classList: { remove() {} },
+      querySelectorAll: () => [],
+    },
+    status: { textContent: '' },
+    detail: { textContent: '', title: '' },
+    errorDetail: { textContent: '' },
+  };
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async () => ({ ok: true }),
+    radioLayer: {
+      subscribePlaybackControls(listener) {
+        playbackControl = listener;
+        return () => {
+          playbackControl = null;
+        };
+      },
+      setVoiceDucked(ducked) {
+        order.push(ducked ? 'radio-muted' : 'radio-fade-in');
+      },
+      playForVoice: async () => true,
+      stopPlayback() {
+        order.push('radio-stop');
+      },
+    },
+  });
+  controller.debugLog = () => {};
+  controller.status = 'listening';
+  controller.pushToTalkMode = true;
+  controller.dc = {
+    readyState: 'open',
+    close() {
+      order.push('voice-stop');
+    },
+  };
+  controller.pendingRadioPlaybackResult = {
+    ok: true,
+    action: 'control_radio',
+    radioPlaybackRequested: true,
+  };
+
+  await controller.startPendingRadioHandoff();
+  controller.start = async (settings) => {
+    starts.push(settings);
+  };
+  playbackControl({ action: 'pause', origin: 'user' });
+  await new Promise((resolve) => setImmediate(resolve));
+  playbackControl({ action: 'stop', origin: 'user' });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(starts, [{ pushToTalk: true }]);
+  assert.equal(order.includes('voice-stop'), true);
+});
+
+test('an explicit voice stop cancels a Radio resume queued in the same turn', async () => {
+  const starts = [];
+  let playbackControl = null;
+  const controller = new GevRealtimeController({
+    ui: {
+      root: {
+        dataset: {},
+        classList: { remove() {} },
+        querySelectorAll: () => [],
+      },
+      status: { textContent: '' },
+      detail: { textContent: '', title: '' },
+      errorDetail: { textContent: '' },
+    },
+    runner: async () => ({ ok: true }),
+    radioLayer: {
+      subscribePlaybackControls(listener) {
+        playbackControl = listener;
+        return () => {};
+      },
+      setVoiceDucked() {},
+      playForVoice: async () => true,
+      stopPlayback() {},
+    },
+  });
+  controller.debugLog = () => {};
+  controller.status = 'listening';
+  controller.dc = { readyState: 'open', close() {} };
+  controller.pendingRadioPlaybackResult = {
+    ok: true,
+    action: 'control_radio',
+    radioPlaybackRequested: true,
+  };
+
+  await controller.startPendingRadioHandoff();
+  controller.start = async (settings) => starts.push(settings);
+  playbackControl({ action: 'pause', origin: 'user' });
+  controller.stop();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(starts, []);
+});
+
+test('disabling Radio resumes voice only when a voice-started handoff owns the lease', async () => {
+  const starts = [];
+  let visibilityRequest = null;
+  const ui = {
+    root: {
+      dataset: {},
+      classList: { remove() {} },
+      querySelectorAll: () => [],
+    },
+    status: { textContent: '' },
+    detail: { textContent: '', title: '' },
+    errorDetail: { textContent: '' },
+  };
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async () => ({ ok: true }),
+    radioLayer: {
+      subscribePlaybackControls: () => () => {},
+      setVoiceDucked() {},
+      playForVoice: async () => true,
+      stopPlayback() {},
+    },
+    dataManager: {
+      subscribeVisibilityRequests(listener) {
+        visibilityRequest = listener;
+        return () => {
+          visibilityRequest = null;
+        };
+      },
+      waitForLayerSettled: async () => {},
+      isEnabled: () => false,
+    },
+  });
+  controller.debugLog = () => {};
+  controller.status = 'listening';
+  controller.dc = { readyState: 'open', send() {}, close() {} };
+  controller.pendingRadioPlaybackResult = {
+    ok: true,
+    action: 'control_radio',
+    radioPlaybackRequested: true,
+  };
+
+  await controller.startPendingRadioHandoff();
+  controller.start = async (settings) => starts.push(settings);
+  visibilityRequest({ layerId: 'radio', enabled: false, origin: 'user' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(starts, [{ pushToTalk: false }]);
+
+  visibilityRequest({ layerId: 'radio', enabled: false, origin: 'user' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(starts.length, 1);
+});
+
+test('manual Radio takeover never arms automatic voice resume', async () => {
+  const starts = [];
+  let playbackControl = null;
+  const ui = {
+    root: {
+      dataset: {},
+      classList: { remove() {} },
+      querySelectorAll: () => [],
+    },
+    status: { textContent: '' },
+    detail: { textContent: '', title: '' },
+    errorDetail: { textContent: '' },
+  };
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async () => ({ ok: true }),
+    radioLayer: {
+      subscribePlaybackControls(listener) {
+        playbackControl = listener;
+        return () => {};
+      },
+      setVoiceDucked() {},
+    },
+  });
+  controller.debugLog = () => {};
+  controller.status = 'listening';
+  controller.dc = { readyState: 'open', close() {} };
+  controller.start = async (settings) => starts.push(settings);
+
+  playbackControl({ action: 'play', origin: 'user' });
+  playbackControl({ action: 'pause', origin: 'user' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(starts, []);
 });
 
 test('manual playback takeover survives stale voice preflight cleanup', async () => {
@@ -3827,4 +4122,33 @@ test('voice runs app actions itself and other tools through the catalog', async 
   assert.deepEqual(resets, [['stopped']]);
   assert.deepEqual(disposals, [['removed']]);
   assert.equal(withToolCatalog(runner, undefined), runner);
+});
+
+test('catalog load and tool results cannot escape cancelled provider work', async () => {
+  let releaseLoad;
+  let calls = 0;
+  let current = true;
+  const catalog = {
+    get: () => true,
+    call: async () => { calls++; return { summary: 'Result', data: {} }; },
+  };
+  const run = withToolCatalog(async () => { throw new Error('Unexpected fallback'); },
+    () => new Promise((resolve) => { releaseLoad = resolve; }));
+  const pending = run('get_wind', {}, { isCurrent: () => current });
+  current = false;
+  releaseLoad(catalog);
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(calls, 0);
+
+  const abort = new AbortController();
+  let releaseCall;
+  const delayed = withToolCatalog(async () => {}, async () => ({
+    get: () => true,
+    call: () => new Promise((resolve) => { releaseCall = resolve; }),
+  }));
+  const result = delayed('get_wind', {}, { signal: abort.signal });
+  await Promise.resolve();
+  abort.abort();
+  releaseCall({ summary: 'Stale result', data: {} });
+  await assert.rejects(result, { name: 'AbortError' });
 });

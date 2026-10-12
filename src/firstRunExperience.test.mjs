@@ -661,11 +661,28 @@ test('the voice TOOL SCHEMA matches the pinned contract — the mission mapping 
   // Canonical serialization pins every tool name, description, property and
   // ordering while allowing source formatting. Derived from the unchanged
   // release schema before formatting (the previous source-byte pin passed).
-  const legacyTools = structuredClone(GEV_REALTIME_TOOLS).filter((tool) => tool.name !== 'set_cyber_sonar');
+  const legacyTools = structuredClone(GEV_REALTIME_TOOLS).filter(
+    (tool) =>
+      ![
+        'set_cyber_sonar',
+        'set_voice_provider',
+        'set_voice_inactivity_timeout',
+        'set_voice_panel_order',
+        'set_voice_preview_enabled',
+      ].includes(tool.name),
+  );
   const hudLayout = legacyTools.find((tool) => tool.name === 'set_hud').parameters.properties.layout;
   assert.deepEqual(hudLayout.enum, ['tactical', 'operator', 'minimal', 'cyber']);
   // Cyber deliberately adds one layout; first-run missions still change no tools.
   hudLayout.enum = hudLayout.enum.filter((layout) => layout !== 'cyber');
+  const panelTool = legacyTools.find((tool) => tool.name === 'set_panel_open');
+  panelTool.description = 'Open or close a GEV UI panel/dropdown.';
+  const panelIds = panelTool.parameters.properties.panelId;
+  assert.ok(panelIds.enum.includes('voice-preview'), 'the unified voice panel exposes Preview');
+  panelIds.enum = panelIds.enum.filter(
+    (panelId) => !['provider-settings', 'voice-settings', 'voice-preview', 'settings'].includes(panelId),
+  );
+  delete panelIds.description;
   const block = JSON.stringify(legacyTools);
   // Re-derived for the voice layer manifest (generated layer enums, alias and
   // field hints), point-and-ask's pointer/referent arguments and the prompt
@@ -674,10 +691,12 @@ test('the voice TOOL SCHEMA matches the pinned contract — the mission mapping 
   // schema, which may not carry top-level anyOf), and Contacts requested-radius
   // list descriptions; the missions still ride existing tools.
   // Street Level adds toggle enum values and the generated alias hint.
-  assert.equal(block.length, 29802, 'serialized tool schema length drifted');
+  // Radio description consolidation removes duplicated guidance without changing arguments.
+  // Globe rotation deliberately adds an Earth-centered motion and concise camera guidance.
+  assert.equal(block.length, 29455, 'serialized tool schema length drifted');
   assert.equal(
     crypto.createHash('sha256').update(block).digest('hex'),
-    'b316ca2e67848eb565b6847ac044a19d1465d8ef8252a5dfbd7d947a2a36d5ed',
+    '63ae7bbde537549f00cf5c8e1470f0a280b698925e17dc8d5c1588cb7059ea0e',
     'the first-run missions must ride EXISTING tools: no schema edit, no cache bust',
   );
   const instructions = fs.readFileSync(new URL('../server/providers/openai/instructions.js', import.meta.url), 'utf8');

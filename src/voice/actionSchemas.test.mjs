@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { GEV_ACTION_SCHEMAS, createActionTools } from './actionSchemas.js';
+import { createGeminiLiveConfig } from '../../server/providers/gemini/config.js';
 import { GEV_REALTIME_TOOLS } from '../../server/providers/openai/tools.js';
 import {
   validateArgs,
@@ -37,7 +38,15 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     // omit top-level anyOf (OpenAI rejects it). Contacts list routing preserves
     // requested radius and center authority in descriptions only.
     // Street Level adds its toggle enum values and generated alias hint.
-    '9eb113454c5af5e32e27ffcdc7919d0e4600ba1d204f8f175e071152be41ad0f',
+    // Gemini adds provider/settings controls and inactivity preferences while
+    // retaining the current manifest, pointer and OAuth-compatible schemas.
+    // Globe rotation adds one motion while retaining local camera yaw.
+    // Provider selection preserves on/off and input mode in a fresh session.
+    // Panel order adds a bounded action; generic settings asks before opening.
+    // Preview adds one absolute preference action; compact panel wording keeps the cap.
+    // Generic settings calls the tool before asking its clarification question.
+    // Unified voice views add one panel enum and replace stacking descriptions.
+    '397c20e981ea1bdb9ad16cb1e036b626ccc5ed531c612e3ac52f52498fb22e0b',
   );
 });
 
@@ -95,7 +104,15 @@ test('metadata cannot add tools, fields, types or enum values', () => {
 
 test('all legacy action arguments are byte-identical after removing the deliberate additions', () => {
   const legacy = structuredClone(GEV_ACTION_SCHEMAS).filter(
-    (tool) => !['next_satellite_pass', 'set_cyber_sonar'].includes(tool.name),
+    (tool) =>
+      ![
+        'next_satellite_pass',
+        'set_cyber_sonar',
+        'set_voice_provider',
+        'set_voice_inactivity_timeout',
+        'set_voice_panel_order',
+        'set_voice_preview_enabled',
+      ].includes(tool.name),
   );
   // Layer enums are generated from the voice layer manifest and pinned by
   // layerManifest.test.mjs; the two shipped right-rail panels are additive.
@@ -105,9 +122,21 @@ test('all legacy action arguments are byte-identical after removing the delibera
   delete property('show_data_layers_menu').layerId.enum;
   delete property('get_entity_context').layerId.enum;
   delete property('analyst_query').layers.items.enum;
+  // Earth-centered rotation is additive; local camera yaw keeps its contract.
+  property('move_camera').motion.enum = property(
+    'move_camera',
+  ).motion.enum.filter((motion) => motion !== 'rotate_globe');
   const panels = property('set_panel_open').panelId;
   panels.enum = panels.enum.filter(
-    (id) => !['weather-panel', 'recent-imagery-panel'].includes(id),
+    (id) =>
+      ![
+        'weather-panel',
+        'recent-imagery-panel',
+        'provider-settings',
+        'voice-settings',
+        'voice-preview',
+        'settings',
+      ].includes(id),
   );
   for (const tool of legacy) {
     // Point-and-ask adds `referent` arguments and 'pointer' enum values.
@@ -142,6 +171,24 @@ test('all legacy action arguments are byte-identical after removing the delibera
     createHash('sha256').update(JSON.stringify(legacy)).digest('hex'),
     '01f14fdb1523eebfcbff8b115e48e6ab99e36fa06f55a3bb13c65e198f79d758',
   );
+});
+
+test('globe rotation is an additive camera motion with the existing control arguments', () => {
+  const schema = GEV_ACTION_SCHEMAS.find(
+    (tool) => tool.name === 'move_camera',
+  ).parameters;
+  for (const motion of ['rotate_globe', 'rotate', 'orbit', 'pan', 'tilt']) {
+    assert.deepEqual(
+      validateArgs(schema, {
+        motion,
+        direction: 'right',
+        speed: 'slow',
+        mode: 'continuous',
+      }),
+      [],
+    );
+  }
+  assert.ok(validateArgs(schema, { motion: 'spin_camera' }).length > 0);
 });
 
 test('track_entity accepts a referent alone but rejects an empty target', () => {
@@ -180,5 +227,52 @@ test('the benchmark still rejects an empty track_entity although the model-facin
       args: { referent: 2 },
     }),
     [],
+  );
+});
+
+test('both production providers expose the same absolute preview preference schema', () => {
+  const action = GEV_REALTIME_TOOLS.find(
+    (t) => t.name === 'set_voice_preview_enabled',
+  );
+  assert.deepEqual(action.parameters, {
+    type: 'object',
+    additionalProperties: false,
+    properties: { enabled: { type: 'boolean' } },
+    required: ['enabled'],
+  });
+  const config = createGeminiLiveConfig();
+  const gemini = config.tools[0].functionDeclarations.find(
+    (t) => t.name === action.name,
+  );
+  assert.deepEqual(gemini.parametersJsonSchema, action.parameters);
+  assert.equal(gemini.description, action.description);
+  assert.match(
+    config.systemInstruction.parts[0].text,
+    /set_voice_preview_enabled/,
+  );
+});
+
+test('both providers select shared voice views through the existing panel action', () => {
+  const panel = GEV_REALTIME_TOOLS.find(
+    (tool) => tool.name === 'set_panel_open',
+  );
+  assert.ok(panel.parameters.properties.panelId.enum.includes('voice-preview'));
+  assert.ok(
+    panel.parameters.properties.panelId.enum.includes('voice-settings'),
+  );
+  assert.equal(
+    GEV_REALTIME_TOOLS.some((tool) => tool.name.startsWith('show_voice_')),
+    false,
+  );
+  const config = createGeminiLiveConfig();
+  const gemini = config.tools[0].functionDeclarations.find(
+    (tool) => tool.name === panel.name,
+  );
+  assert.deepEqual(gemini.parametersJsonSchema, panel.parameters);
+  assert.equal(gemini.description, panel.description);
+  assert.match(config.systemInstruction.parts[0].text, /Voice has one panel/);
+  assert.match(
+    config.systemInstruction.parts[0].text,
+    /Selecting Preview never enables it/,
   );
 });

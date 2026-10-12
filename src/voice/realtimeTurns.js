@@ -74,6 +74,8 @@ export class RealtimeTurns {
     this.progressResponseIds = new Set();
     this.bestEffortEventIds = new Set();
     this.bestEffortSequence = 0;
+    this.providerCompletion = null;
+    this.drainedResponses = new Set();
   }
   get actionExecutor() {
     return this.readActionExecutor();
@@ -218,12 +220,80 @@ export class RealtimeTurns {
   }
 
   async handleRealtimeEvent(event) {
+    const channel = this.dc;
+    await this.processRealtimeEvent(event);
+    // Provider replacement is a conversation boundary. Publish only after
+    // response bookkeeping, usage and tool follow-ups have settled.
+    if (this.ownsConversation(channel)) this.flushProviderCompletion();
+  }
+
+  flushProviderCompletion() {
+    const completion = this.providerCompletion;
+    if (
+      !completion ||
+      this.responseActive ||
+      this.responseCreatePending ||
+      this.activeToolAbortControllers.size ||
+      this.pendingResponseInstructions ||
+      this.pendingUserTextResponse ||
+      this.userTurnPending ||
+      this.assistantAudioPlaying ||
+      this.progressResponse ||
+      (completion.audio && !this.drainedResponses.has(completion.responseId))
+    )
+      return;
+    this.providerCompletion = null;
+    this.emitSessionEvent({
+      type: 'reply-complete',
+      responseId: completion.responseId,
+      status: 'completed',
+    });
+  }
+
+  async processRealtimeEvent(event) {
     const eventChannel = this.dc;
     let payload = null;
     try {
       payload = JSON.parse(event.data);
     } catch {
       return;
+    }
+    const progressEvent = this.isProgressEvent(payload);
+    if (!progressEvent) {
+      if (
+        payload.type === 'response.created' ||
+        payload.type === 'input_audio_buffer.speech_started'
+      )
+        this.providerCompletion = null;
+      if (
+        ['output_audio_buffer.stopped', 'output_audio_buffer.cleared'].includes(
+          payload.type,
+        )
+      ) {
+        const id = payload.response_id || this.providerCompletion?.responseId;
+        if (id) this.drainedResponses.add(id);
+        while (this.drainedResponses.size > SPEECH_RESPONSE_MEMORY)
+          this.drainedResponses.delete(
+            this.drainedResponses.values().next().value,
+          );
+      }
+      if (payload.type === 'response.done') {
+        const response = payload.response || {};
+        const output = response.output || [];
+        this.providerCompletion =
+          response.status === 'completed' &&
+          !this.isSupersededResponse(response.id) &&
+          !output.some((item) => item.type === 'function_call')
+            ? {
+                responseId: response.id,
+                audio: output.some((item) =>
+                  item.content?.some((part) =>
+                    ['audio', 'output_audio'].includes(part.type),
+                  ),
+                ),
+              }
+            : null;
+      }
     }
     const sessionEvent = realtimeSessionEvent(payload);
     if (sessionEvent) this.emitSessionEvent(sessionEvent);
@@ -1073,5 +1143,7 @@ export class RealtimeTurns {
     this.progressResponse = null;
     this.progressResponseIds.clear();
     this.bestEffortEventIds.clear();
+    this.providerCompletion = null;
+    this.drainedResponses.clear();
   }
 }

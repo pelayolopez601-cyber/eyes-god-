@@ -17,11 +17,19 @@ export function withToolCatalog(runner, loadCatalog) {
   if (typeof loadCatalog !== 'function') return runner;
   const runGevTool = async function runGevTool(name, args, options = {}) {
     if (ACTION_NAMES.has(name)) return runner(name, args, options);
+    const checkCurrent = () => {
+      options.signal?.throwIfAborted();
+      if (options.isCurrent && !options.isCurrent())
+        throw new DOMException('Voice query cancelled', 'AbortError');
+    };
+    checkCurrent();
     const catalog = await loadCatalog();
+    checkCurrent();
     if (!catalog?.get(name)) return runner(name, args, options);
     const result = await catalog.call(name, args ?? {}, {
       signal: options.signal,
     });
+    checkCurrent();
     return toFunctionOutput(name, result);
   };
   runGevTool.resetConversation = (...args) =>
@@ -61,10 +69,11 @@ export function initGevVoiceCommands(options) {
   });
   deixis.imageFrame = () => commands.retainedImageFrame?.() || null;
   deixis.onPointerUsed = () => commands.announcePointer?.();
-  commands.session?.signal?.addEventListener(
-    'abort',
-    () => pointer?.destroy(),
-    { once: true },
-  );
+  const lifetime = commands.signal ?? commands.session?.signal;
+  if (lifetime?.aborted) pointer?.destroy();
+  else
+    lifetime?.addEventListener('abort', () => pointer?.destroy(), {
+      once: true,
+    });
   return commands;
 }

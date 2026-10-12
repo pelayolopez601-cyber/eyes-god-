@@ -26,7 +26,6 @@
 - Street Level providers are optional in application composition. Omitting a
   Mapillary source no longer prevents startup; callers can inject a different
   provider list or an empty list without changing layer identities or share links.
-
 - Vector tile sources take their allowed tile origin from the configured
   `tileJsonUrl`, so repointing only that URL at a mirror loads tiles from the
   mirror or fails visibly instead of silently using OpenFreeMap. Thanks to
@@ -98,6 +97,72 @@
 - Keep later satellites when a TLE catalog entry is missing an orbital line.
   The parser skips the incomplete set and resumes at the next complete named
   set, instead of losing the rest of the group (#906).
+
+- Combine Voice Preview and Voice Settings in one shared panel with icon tabs.
+  Explicit settings requests select Settings; ordinary meaningful requests
+  select Preview when it is enabled. A saved, default-on checkbox can hide
+  Preview without stopping voice, and both providers can change it by voice.
+  Voice Settings keeps the browser-local inactivity timeout with its five-minute
+  default, preset and validated custom range, pending speech/tool protection,
+  full cleanup on expiry and no share-link serialization. Cockpit exit handling,
+  provider replacement and individual tool-call guards remain intact. Settings
+  remains available when voice is off or in an error state, while an open Preview
+  view closes. The panel and controls follow the Cyber palette, and the custom
+  inactivity slider uses the Display panel's thin track, glowing thumb and
+  keyboard behavior.
+
+- Rotate or spin the globe around its center while keeping its framing instead
+  of turning the camera away from the planet. Camera turns and landmark orbits
+  retain their existing behavior.
+
+- Give the Cyber mic control a visible inset keyboard-focus frame and a brighter mic icon so Tab and Shift+Tab navigation remain clear inside its clipped chamfered button.
+
+- Add Gemini Live as a selectable voice provider alongside OpenAI, using the
+  same map actions and standalone query tools, click-to-talk and Space push-to-talk controls. Add a separate
+  Gemini API key created in Google AI Studio in Provider Settings; the server keeps it
+  private and issues a short-lived token for the browser. Gemini defaults to
+  `gemini-3.8-live`, reports connection and quota failures, and releases audio
+  and pending actions when stopped or switched. OpenAI API-key sessions retain
+  their model tiers and spend cap; Gemini uses the project's provider quotas without an in-app
+  spend meter or cap. AI HUD summaries continue to use OpenAI.
+  Gemini Space-started sessions use explicit speech start/end markers, with
+  the input mode locked into the server-issued token. Releasing Space flushes
+  buffered microphone audio before ending the turn; click-started sessions
+  retain automatic speech detection. Cancelling a Gemini tool revokes only
+  that call's Radio work; unrelated calls keep their prepared playback and
+  reservations. New user activity and explicit Radio stop still cancel the
+  previous handoff. Voice panel routing keeps the right-rail **Display**
+  controls separate from the bottom **Visual Presets** tray, and routes
+  **Display** and **Radio** to their cockpit-specific controls while Cockpit is
+  active. Voice can open or close **POWER UP / Provider Settings** and request
+  an OpenAI/Gemini provider change; an active reply finishes before the new
+  provider reconnects with the same input mode in a fresh conversation. Manual
+  selection also keeps voice on when it was on, with push-to-talk muted until a
+  fresh Space hold; voice that was off stays off. A voice-started Radio handoff now carries a one-use
+  resume lease: pausing or disabling that same Radio session restarts the prior
+  voice mode. Manual Radio selection, tuning or playback revokes that lease; ordinary voice stops, provider
+  changes, and teardown revoke that Radio resume lease. Gemini's 60-second new-session
+  window and configured 30-minute token expiry are separate from Google's
+  roughly 10-minute Live connection lifetime. On `goAway`, Gemini voice cleans
+  up locally and asks for an explicit restart, which mints a fresh token and
+  begins a new conversation; this version does not resume automatically.
+  Both providers use the shared voice card and progress scheduler. Gemini uses
+  model-authored preambles and the shared soft tone while push-to-talk is muted.
+  Gemini playback limits each PCM chunk to 2 MiB and queued playback to 60 seconds
+  or 256 pending chunks; an overflow stops voice and asks for a restart.
+  Code-authored out-of-band spoken progress remains OpenAI-only because extra
+  Gemini Live text interrupts the active reply.
+  Gemini also uses the shared point-and-ask snapshot for Space holds, continuous
+  speech and typed commands. For Space holds, pointer context is added without
+  requesting a reply before speech starts, so pointing alone does not trigger an
+  answer. Local interruptions discard the retired
+  reply’s late audio, transcripts and tool calls through its server turn boundary
+  while preserving the next command; idle holds remain immediately usable.
+  Typed overrides close forwarded push-to-talk activity before the new text and
+  discard the earlier gesture’s delayed microphone callbacks. Each capture keeps
+  its original hold identity through delivery, so old audio cannot become part
+  of a newer hold or use its pointer snapshot. An unsettled repeated interruption
+  keeps its original five-second deadline and stops voice with a restart hint.
 
 - Add an experimental ChatGPT/Codex OAuth option for cloud voice in Provider
   Settings. API-key voice remains the default. Local sign-in can start from

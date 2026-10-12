@@ -3,7 +3,10 @@ import test from 'node:test';
 import { GevRealtimeController } from './realtimeController.js';
 import { PROGRESS_MAX_OUTPUT_TOKENS } from './realtimeTurns.js';
 
-function controllerFixture({ runner = async () => ({ ok: true }) } = {}) {
+function controllerFixture({
+  runner = async () => ({ ok: true }),
+  onSessionEvent,
+} = {}) {
   const sent = [];
   const statuses = [];
   const usage = [];
@@ -16,6 +19,7 @@ function controllerFixture({ runner = async () => ({ ok: true }) } = {}) {
     },
     runner,
     debugSink: null,
+    onSessionEvent,
   });
   const setStatus = controller.setStatus.bind(controller);
   controller.setStatus = (status, detail) => {
@@ -255,4 +259,111 @@ test('tools report start, progress and finish to narration; Radio stays silent',
     arguments: JSON.stringify({ action: 'volume', volumePct: 20 }),
   });
   assert.equal(calls.find((call) => call[0] === 'start')?.[3], false);
+});
+
+test('provider replacement waits for the final in-band reply, usage and playback drain', async () => {
+  const events = [];
+  const f = controllerFixture({
+    onSessionEvent: (event) => events.push(event),
+  });
+  const ready = () => events.filter((event) => event.type === 'reply-complete');
+  await f.progressLine('progress');
+  await f.event({
+    type: 'response.done',
+    response: {
+      id: 'progress',
+      status: 'completed',
+      metadata: { gev: 'progress' },
+    },
+  });
+  assert.equal(
+    ready().length,
+    0,
+    'out-of-band progress is not a reply boundary',
+  );
+  await f.event({
+    type: 'response.created',
+    response: { id: 'tool-response' },
+  });
+  await f.event({
+    type: 'response.done',
+    response: {
+      id: 'tool-response',
+      status: 'completed',
+      output: [{ type: 'function_call' }],
+    },
+  });
+  assert.equal(
+    ready().length,
+    0,
+    'tool generation cannot replace its own provider',
+  );
+  await f.event({
+    type: 'response.created',
+    response: { id: 'acknowledgment' },
+  });
+  await f.event({
+    type: 'output_audio_buffer.started',
+    response_id: 'acknowledgment',
+  });
+  const usage = { input_tokens: 7, output_tokens: 3, total_tokens: 10 };
+  await f.event({
+    type: 'response.done',
+    response: {
+      id: 'acknowledgment',
+      status: 'completed',
+      usage,
+      output: [{ type: 'message', content: [{ type: 'audio' }] }],
+    },
+  });
+  assert.equal(ready().length, 0, 'generated audio is still playing');
+  assert.deepEqual(
+    f.usage.at(-1),
+    usage,
+    'usage is accounted before replacement',
+  );
+  await f.event({
+    type: 'output_audio_buffer.stopped',
+    response_id: 'acknowledgment',
+  });
+  assert.deepEqual(
+    ready().map((event) => event.responseId),
+    ['acknowledgment'],
+  );
+  await f.event({
+    type: 'output_audio_buffer.stopped',
+    response_id: 'acknowledgment',
+  });
+  assert.equal(ready().length, 1, 'drain can publish the boundary only once');
+  f.controller.stop();
+});
+
+test('failed, cancelled, pending-tool and stopped replies cannot replace a provider', async () => {
+  const events = [];
+  const f = controllerFixture({
+    onSessionEvent: (event) => events.push(event),
+  });
+  const ready = () => events.filter((event) => event.type === 'reply-complete');
+  for (const status of ['failed', 'cancelled']) {
+    await f.event({ type: 'response.created', response: { id: status } });
+    await f.event({
+      type: 'response.done',
+      response: { id: status, status, output: [] },
+    });
+  }
+  assert.equal(ready().length, 0);
+  const tool = new AbortController();
+  f.controller._turns.activeToolAbortControllers.add(tool);
+  await f.event({ type: 'response.created', response: { id: 'pending' } });
+  await f.event({
+    type: 'response.done',
+    response: { id: 'pending', status: 'completed', output: [] },
+  });
+  assert.equal(ready().length, 0, 'pending sibling tool owns the conversation');
+  f.controller.stop();
+  await f.event({
+    type: 'output_audio_buffer.stopped',
+    response_id: 'pending',
+  });
+  assert.equal(ready().length, 0, 'stop invalidates pending reply completion');
 });
