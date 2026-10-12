@@ -169,13 +169,21 @@ export function composeCatalog({
   );
   const index = new Map(available.map((tool) => [tool.name, tool]));
 
-  const invoke = (name, args, signal, parent) => {
+  const invoke = async (name, args, signal, parent) => {
+    signal?.throwIfAborted();
     const tool = index.get(name);
     if (!tool)
       return Promise.reject(
         new ToolError('unsupported', `No tool named ${name} is available`),
       );
-    return chain({ tool, args, signal, ...(parent ? { parent } : {}) });
+    const result = await chain({
+      tool,
+      args,
+      signal,
+      ...(parent ? { parent } : {}),
+    });
+    signal?.throwIfAborted();
+    return result;
   };
   const execute = async ({ tool, args, signal }) => {
     signal?.throwIfAborted();
