@@ -106,7 +106,8 @@ export function validateValue(schema, value, path = 'arguments') {
         fail('must be a string');
         break;
       }
-      const length = [...value].length;
+      let length = 0;
+      for (const character of value) length += 1;
       if (schema.minLength != null && length < schema.minLength)
         fail(`must be at least ${schema.minLength} characters`);
       if (schema.maxLength != null && length > schema.maxLength)
