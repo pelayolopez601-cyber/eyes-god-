@@ -1384,6 +1384,8 @@ accessible name remains "Don't show this again". Control behavior is unchanged.
 
 ## FIRMS source status
 
+FIRMS ingestion and adaptation reject impossible acquisition calendar dates while retaining valid UTC acquisition times.
+
 The FIRMS proxy records source success after appending its rows. If aggregation
 throws, that source reports failure without a contradictory success entry.
 The existing per-record append continues to support large feeds; sequential
@@ -5123,8 +5125,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(firms): refuse impossible acquisition dates in parser and adapter
-
-Verify the parsed calendar day and reuse the existing acquisition parser from the rendering adapter, retaining unpadded valid UTC times and memoization.
