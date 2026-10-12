@@ -399,6 +399,7 @@ camera moves with easing, duration and holds. Playback and seek share one
 coordinate sampler; navigation/manual input revokes authored motion and pending
 holds. Anchor heights and explicit endpoints require the WGS84 ellipsoid
 reference. Legacy projects retain their ordinary flights, content and edits.
+Seeking between ordinary camera poses uses the shortest longitude arc across the dateline while preserving both authored endpoint longitudes.
 See [camera directions](DIRECTOR-CAMERA.md).
 
 Realtime voice composes separate connection, response/tool, Radio handoff, input
@@ -5127,8 +5128,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(director): seek camera longitude across the shortest dateline arc
-
-Interpolate longitude with the existing shortest-angle easing, normalize intermediate longitudes, and preserve exact authored endpoints at progress zero and one.
