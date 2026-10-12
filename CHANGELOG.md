@@ -95,6 +95,12 @@
 
 ## [Unreleased]
 
+- Satellite clouds keep Clouds only / Full as quick endpoints and add a continuous
+  cloud-filter slider: 0% is Full, 100% is the existing brightness key, and
+  intermediate values blend the keyed alpha. The slider commits on release to
+  avoid restaging imagery for every drag event. Filter percentages round-trip in
+  share links; legacy mode codes retain their old endpoint meanings.
+
 - Keep later satellites when a TLE catalog entry is missing an orbital line.
   The parser skips the incomplete set and resumes at the next complete named
   set, instead of losing the rest of the group (#906).
