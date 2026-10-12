@@ -67,6 +67,7 @@ const PANEL_ALIASES = new Map([
   ['styles', 'control-panel'],
   ['filters', 'control-panel'],
   ['visual styles', 'control-panel'],
+  ['visual presets', 'control-panel'],
   ['cctv', 'cctv-panel'],
   ['cameras', 'cctv-panel'],
   ['radio', 'radio-panel'],
@@ -81,11 +82,25 @@ const PANEL_ALIASES = new Map([
   ['scene', 'scene-panel'],
   ['post processing', 'pp-toggles'],
   ['hud controls', 'pp-toggles'],
+  ['display', 'pp-toggles'],
+  ['display panel', 'pp-toggles'],
   ['map stack', 'control-panel'],
   ['stack', 'control-panel'],
   ['basemap', 'control-panel'],
   ['map sources', 'control-panel'],
   ['sources', 'control-panel'],
+  ['power up', 'provider-settings'],
+  ['powerup', 'provider-settings'],
+  ['provider settings', 'provider-settings'],
+  ['api keys', 'provider-settings'],
+  ['keys', 'provider-settings'],
+  ['voice settings', 'voice-settings'],
+  ['voice provider settings', 'voice-settings'],
+  ['voice preferences', 'voice-settings'],
+  ['voice preview', 'voice-preview'],
+  ['voice preview panel', 'voice-preview'],
+  ['settings', 'settings'],
+  ['settings panel', 'settings'],
   ['weather', 'weather-panel'],
   ['weather panel', 'weather-panel'],
   ['recent imagery', 'recent-imagery-panel'],
@@ -101,6 +116,9 @@ const PANEL_IDS = new Set([
   'global-context-panel',
   'scene-panel',
   'pp-toggles',
+  'provider-settings',
+  'voice-settings',
+  'voice-preview',
   'weather-panel',
   'recent-imagery-panel',
 ]);
@@ -300,6 +318,8 @@ export function createGevActionRunner({
   floorServices = defaultFloorServices,
   annotationResolver = defaultAnnotationResolver,
   searchNavigation = searchAndFlyTo,
+  readVoiceCommands = () => globalThis.window?.__gevVoiceCommands,
+  readKeySetup = () => globalThis.window?.__gevKeySetup,
   speechBuilders = null,
   deixis = null,
 }) {
@@ -702,8 +722,251 @@ export function createGevActionRunner({
           `Unknown panel: ${args.panelId || args.panel || 'missing'}`,
         );
       const open = args.open !== false;
+      if (!current())
+        return { ok: false, action: name, panelId, cancelled: true };
+      // A generic request names no panel. The conversation owns the answer;
+      // no opening is queued that could survive cancellation or a new session.
+      if (panelId === 'settings') {
+        return {
+          ok: true,
+          action: name,
+          panelId,
+          open: false,
+          requiresClarification: open,
+          proposedPanelId: open ? 'voice-settings' : null,
+          ...(open
+            ? {
+                say: 'Do you mean Voice Settings—the voice provider and preferences?',
+              }
+            : { cancelled: true, say: 'Cancelled.' }),
+        };
+      }
+      if (panelId === 'provider-settings') {
+        const keySetup = readKeySetup?.();
+        const operation = open ? keySetup?.open : keySetup?.close;
+        if (typeof operation !== 'function') {
+          return {
+            ok: false,
+            action: 'set_panel_open',
+            panelId,
+            open,
+            error: 'Provider Settings are unavailable in this build',
+          };
+        }
+        operation();
+        return { ok: true, action: 'set_panel_open', panelId, open };
+      }
+      if (['voice-settings', 'voice-preview'].includes(panelId)) {
+        const voice = readVoiceCommands?.();
+        const view = panelId === 'voice-settings' ? 'settings' : 'preview';
+        const label = view === 'settings' ? 'Voice Settings' : 'Voice Preview';
+        const operation = open
+          ? voice?.selectVoicePanelView
+          : voice?.closeVoicePanelView;
+        const legacy =
+          view === 'settings'
+            ? voice?.setVoiceSettingsOpen
+            : voice?.setVoicePreviewOpen;
+        if (typeof operation !== 'function' && typeof legacy !== 'function') {
+          return {
+            ok: false,
+            action: 'set_panel_open',
+            panelId,
+            open,
+            error: `${label} is unavailable`,
+          };
+        }
+        const cockpitActive =
+          styleManager?.getCockpitState?.()?.active === true ||
+          styleManager?.cockpitView?.active === true;
+        if (open && cockpitActive) {
+          if (view === 'preview')
+            return {
+              ok: false,
+              action: name,
+              panelId,
+              open: false,
+              requestedOpen: true,
+              reason: 'cockpit',
+              error: 'Exit Cockpit before showing Voice Preview.',
+            };
+          const pending = voice.deferVoiceSettingsUntilCockpitExit?.() === true;
+          return {
+            ok: pending,
+            action: 'set_panel_open',
+            panelId,
+            open: false,
+            requestedOpen: true,
+            requiresCockpitExit: true,
+            pending,
+            expiresInMs: pending ? 20_000 : null,
+            ...(pending
+              ? {}
+              : { error: 'Exit Cockpit mode to open Voice Settings' }),
+          };
+        }
+        const applied =
+          typeof operation === 'function'
+            ? operation.call(voice, view)
+            : legacy.call(voice, open);
+        const state = applied && typeof applied === 'object' ? applied : null;
+        const ok = state ? state.ok === true : applied === true;
+        if (ok && (open || view === 'settings'))
+          voice.cancelDeferredVoiceSettings?.();
+        return {
+          ...state,
+          ok,
+          action: 'set_panel_open',
+          panelId,
+          open: state
+            ? state.view === view && state.panelOpen === true
+            : ok && open,
+          ...(!ok ? { error: state?.error || `${label} is unavailable` } : {}),
+        };
+      }
       setPanelOpen(styleManager, panelId, open);
       return { ok: true, action: 'set_panel_open', panelId, open };
+    }
+
+    if (name === 'set_voice_panel_order') {
+      const panelId = String(args.panelId || '')
+        .trim()
+        .toLowerCase();
+      const position = String(args.position || '')
+        .trim()
+        .toLowerCase();
+      const result = { action: name, panelId, position };
+      if (!current()) return { ...result, ok: false, cancelled: true };
+      if (!['voice-preview', 'voice-settings'].includes(panelId))
+        return {
+          ...result,
+          ok: false,
+          error: 'Choose Voice Preview or Voice Settings.',
+        };
+      if (!['front', 'back'].includes(position))
+        return { ...result, ok: false, error: 'Choose front or back.' };
+      if (
+        styleManager?.getCockpitState?.()?.active === true ||
+        styleManager?.cockpitView?.active === true
+      )
+        return {
+          ...result,
+          ok: false,
+          reason: 'cockpit',
+          error: 'Exit Cockpit before selecting a voice panel view.',
+          say: 'Exit Cockpit first, then select a voice panel view.',
+        };
+      const voice = readVoiceCommands?.();
+      if (typeof voice?.setVoicePanelOrder !== 'function')
+        return {
+          ...result,
+          ok: false,
+          error: 'Voice panel selection is unavailable.',
+        };
+      const order = voice.setVoicePanelOrder(panelId, position);
+      if (order?.ok !== true)
+        return {
+          ...result,
+          ...order,
+          ok: false,
+          say: order?.error || 'Voice panel selection is unavailable.',
+        };
+      return {
+        ...result,
+        ...order,
+        say: ['preview', 'settings'].includes(order.view)
+          ? `Voice ${order.view === 'settings' ? 'Settings' : 'Preview'} selected.${order.view === 'preview' && order.previewEnabled === false ? ' Preview remains disabled.' : ''}`
+          : 'Voice panel updated.',
+      };
+    }
+
+    if (name === 'set_voice_preview_enabled') {
+      const result = { action: name, changed: false };
+      if (!current()) return { ...result, ok: false, cancelled: true };
+      const voice = readVoiceCommands?.();
+      result.enabled = voice?.getVoicePreviewEnabled?.() ?? null;
+      if (typeof args.enabled !== 'boolean')
+        return {
+          ...result,
+          ok: false,
+          reason: 'invalid-enabled',
+          error: 'Voice Preview enabled must be true or false.',
+        };
+      if (typeof voice?.setVoicePreviewEnabled !== 'function')
+        return {
+          ...result,
+          ok: false,
+          enabled: null,
+          reason: 'preview-unavailable',
+          error: 'Voice Preview settings are unavailable.',
+        };
+      const applied = voice.setVoicePreviewEnabled(args.enabled);
+      if (applied?.ok !== true)
+        return {
+          ...result,
+          ...applied,
+          ok: false,
+          say: applied?.error || 'Voice Preview settings are unavailable.',
+        };
+      return {
+        ...result,
+        ...applied,
+        say: `Voice Preview is ${applied.enabled ? 'enabled' : 'disabled'}.${applied.persisted ? '' : " I couldn't save that for your next visit."}`,
+      };
+    }
+
+    if (name === 'set_voice_provider') {
+      const provider = String(args.provider || '')
+        .trim()
+        .toLowerCase();
+      if (!['openai', 'gemini'].includes(provider))
+        throw new Error(
+          `Unknown voice provider: ${args.provider || 'missing'}`,
+        );
+      const voice = readVoiceCommands?.();
+      if (!voice || typeof voice.requestProviderChange !== 'function') {
+        return {
+          ok: false,
+          action: 'set_voice_provider',
+          provider,
+          error: 'Voice provider selection is unavailable',
+        };
+      }
+      const result = voice.requestProviderChange(provider);
+      return {
+        ok: result?.ok !== false,
+        action: 'set_voice_provider',
+        provider,
+        previousProvider: result?.previousProvider ?? voice.provider ?? null,
+        changed: Boolean(result?.changed),
+        pending: Boolean(result?.pending),
+        ...(result?.error ? { error: result.error } : {}),
+      };
+    }
+
+    if (name === 'set_voice_inactivity_timeout') {
+      const minutes = Number(args.minutes);
+      if (!Number.isInteger(minutes) || minutes < 0 || minutes > 60)
+        throw new Error('Voice inactivity timeout must be 0 to 60 minutes');
+      const voice = readVoiceCommands?.();
+      if (!voice || typeof voice.setVoiceInactivityMinutes !== 'function') {
+        return {
+          ok: false,
+          action: 'set_voice_inactivity_timeout',
+          minutes: minutes || null,
+          error: 'Voice inactivity timeout is unavailable',
+        };
+      }
+      const preference = minutes === 0 ? null : minutes;
+      const changed = voice.setVoiceInactivityMinutes(preference);
+      return {
+        ok: changed !== false,
+        action: 'set_voice_inactivity_timeout',
+        minutes: preference,
+        ...(changed === false
+          ? { error: 'Voice inactivity timeout is unavailable' }
+          : {}),
+      };
     }
 
     if (name === 'set_context_mode') {
@@ -2945,6 +3208,23 @@ function normalizeAircraftClassFilter(value) {
 }
 
 function setPanelOpen(styleManager, panelId, open) {
+  const cockpitPanel =
+    panelId === 'pp-toggles'
+      ? 'display'
+      : panelId === 'radio-panel'
+        ? 'radio'
+        : null;
+  const cockpitActive =
+    styleManager?.getCockpitState?.()?.active === true ||
+    styleManager?.cockpitView?.active === true;
+  if (
+    cockpitActive &&
+    cockpitPanel &&
+    typeof styleManager?._setCockpitDisclosure === 'function'
+  ) {
+    styleManager._setCockpitDisclosure(cockpitPanel, open);
+    return;
+  }
   if (styleManager && typeof styleManager.setPanelCollapsed === 'function') {
     styleManager.setPanelCollapsed(panelId, !open, { explicit: true });
   } else {

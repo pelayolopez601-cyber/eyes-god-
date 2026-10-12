@@ -176,6 +176,10 @@ const schemas = [
             'scene-panel',
             'pp-toggles',
             'global-context-panel',
+            'provider-settings',
+            'voice-settings',
+            'voice-preview',
+            'settings',
             'weather-panel',
             'recent-imagery-panel',
           ],
@@ -185,6 +189,62 @@ const schemas = [
         },
       },
       required: ['panelId', 'open'],
+    },
+  },
+  {
+    name: 'set_voice_panel_order',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        panelId: {
+          type: 'string',
+          enum: ['voice-preview', 'voice-settings'],
+        },
+        position: {
+          type: 'string',
+          enum: ['front', 'back'],
+        },
+      },
+      required: ['panelId', 'position'],
+    },
+  },
+  {
+    name: 'set_voice_preview_enabled',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { enabled: { type: 'boolean' } },
+      required: ['enabled'],
+    },
+  },
+  {
+    name: 'set_voice_provider',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        provider: {
+          type: 'string',
+          enum: ['openai', 'gemini'],
+        },
+      },
+      required: ['provider'],
+    },
+  },
+  {
+    name: 'set_voice_inactivity_timeout',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        minutes: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 60,
+        },
+      },
+      required: ['minutes'],
     },
   },
   {
@@ -729,7 +789,7 @@ const schemas = [
       properties: {
         motion: {
           type: 'string',
-          enum: ['orbit', 'pan', 'tilt', 'rotate', 'stop'],
+          enum: ['orbit', 'pan', 'tilt', 'rotate', 'rotate_globe', 'stop'],
         },
         direction: {
           type: 'string',
