@@ -97,10 +97,9 @@ lists at 25 rows by default. Voice offers the same queries next to its app
 actions: the session lists them, and the browser runs them through the same
 catalog, loaded on first use. See [tools and the MCP server](TOOLS.md).
 
-Catalog calls check their cancellation signal before tool execution and after
-the tool resolves, including nested calls. Cancellation discards late catalog
-results without promising rollback of completed actions or invalidating correct
-static-source caches.
+Catalog calls check their cancellation signal immediately before executing a
+tool. Already-cancelled queries do not start; cancellation after execution starts
+continues to follow the existing tool and caller behavior.
 
 ## Cyber HUD — September 30, 2026
 

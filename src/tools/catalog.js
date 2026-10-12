@@ -169,21 +169,13 @@ export function composeCatalog({
   );
   const index = new Map(available.map((tool) => [tool.name, tool]));
 
-  const invoke = async (name, args, signal, parent) => {
-    signal?.throwIfAborted();
+  const invoke = (name, args, signal, parent) => {
     const tool = index.get(name);
     if (!tool)
       return Promise.reject(
         new ToolError('unsupported', `No tool named ${name} is available`),
       );
-    const result = await chain({
-      tool,
-      args,
-      signal,
-      ...(parent ? { parent } : {}),
-    });
-    signal?.throwIfAborted();
-    return result;
+    return chain({ tool, args, signal, ...(parent ? { parent } : {}) });
   };
   const execute = async ({ tool, args, signal }) => {
     signal?.throwIfAborted();
@@ -203,7 +195,6 @@ export function composeCatalog({
     } catch (error) {
       throw fromSourceError(error);
     }
-    signal?.throwIfAborted();
     if (!result || typeof result.summary !== 'string' || !result.data)
       throw new TypeError(`${tool.name} returned no summary or data`);
     if (

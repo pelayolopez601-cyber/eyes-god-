@@ -1,6 +1,6 @@
 # Changelog
 
-- Cancelled tool calls refuse actions before execution and discard results that settle after cancellation.
+- Cancelled catalog queries refuse execution when their signal is already aborted.
 
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
