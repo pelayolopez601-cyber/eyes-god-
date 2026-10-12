@@ -22,11 +22,8 @@ export function adaptFirmsRecords(records) {
     const lat = Number(record?.lat);
     const lon = Number(record?.lon);
     if (
-      ![record?.lat, record?.lon].every(
-        (value) =>
-          typeof value === 'number' ||
-          (typeof value === 'string' && value.trim() !== ''),
-      ) ||
+      !hasCoordinateValue(record?.lat) ||
+      !hasCoordinateValue(record?.lon) ||
       !Number.isFinite(lat) ||
       !Number.isFinite(lon) ||
       Math.abs(lat) > 90 ||
@@ -120,4 +117,11 @@ function clamp01(value) {
 function finiteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+function hasCoordinateValue(value) {
+  return (
+    typeof value === 'number' ||
+    (typeof value === 'string' && value.trim() !== '')
+  );
 }
