@@ -4259,7 +4259,7 @@ are omitted rather than framing the wrong part of the globe.
 
 ### Recent Imagery (September 2026)
 
-Thumbnail decoding requires explicit `Data-Present: true` evidence; false remains empty, while absent or malformed evidence reports an error.
+Thumbnail decoding requires explicit `Data-Present: true` evidence; false remains empty, while absent or malformed evidence reports an error. Injected `getThumbnail` sources must return an OK Response with readable `Data-Present: true` to admit image bytes, or `false` for confirmed empty coverage. Cross-origin sources must expose that header to browser JavaScript.
 
 - The layer sits in the Data Layers panel's Cameras group beside Cameras (CCTV); Mapped ALPR Cameras moved to the Infrastructure group to make room.
 - DATA ▸ **Recent Imagery** (`recent-imagery`, `src/layers/recentImagery/`) lists the last 30 UTC days of imagery for a selected box and drapes the days you pick: HLS S30 (Sentinel-2) and L30 (Landsat 8/9) at 30 m, and the VIIRS NOAA-21 daily overview at 250 m. Keyless and browser-direct: NASA CMR for which days have HLS granules in the box (`catalog.js`, both collections concurrently, paged with `CMR-Search-After` up to 2,000 records each, `truncated` against CMR `hits`), GIBS WMTS for tiles, Worldview Snapshots for thumbnails and exports. Worldview's `Data-Present` header is the only availability signal: GIBS answers an empty tile with HTTP 200, and the JPEG overview would drape black, so a day confirmed empty never drapes.
