@@ -3090,6 +3090,10 @@ sequence lines below 60 km; the proxy strips the unused `image` layer from z14
 tiles (12 MB → ~80 KB) and shares one upstream fetch between concurrent
 requests for a tile.
 
+Mapillary coverage ranks unique tile addresses before applying the 16-tile
+overview budget. Overlapping dateline halves in a polar view therefore do not
+waste overview slots on the same tile; loading already skips duplicate keys.
+
 On Google 3D (`photoreal`) at street zoom (in below 1,400 m above ground, out
 above 1,800 m) the surface mode switches from `draped` to `terrain`: draped
 lines land on roofs and tree tops, so `groundCast.js` instead places lines,
@@ -5127,8 +5131,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(street-level): deduplicate overlapping dateline tile halves
-
-Deduplicate tile addresses before ranking, truncating and reporting total coverage. Dateline ordering and the existing focus policy remain in control.
