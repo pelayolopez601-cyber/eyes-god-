@@ -3140,6 +3140,10 @@ from fixtures (`providers/mapillary/coverageFixture.mjs`,
 photo flow. CI runs the fixture gate and `qa:panel-resize`
 against a production build served by `vite preview` with a dummy token.
 
+Directions retains up to 200 turn instructions. Its truncation notice appears
+only when another independent instruction is omitted; a complete route with
+exactly 200 turns does not show the notice.
+
 Directions is a keyless front end to the routing the voice agent already
 uses. Its row chips are the whole interface: DRIVE / WALK / BIKE pick the
 profile; SET A and SET B arm the next globe click (Escape or a second press
@@ -5127,8 +5131,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(directions): report truncation only when a maneuver was actually omitted
-
-Keep processing foldable exits after the cap and report truncation only when the next admissible independent instruction would exceed it. The returned list remains bounded to 200 steps.
