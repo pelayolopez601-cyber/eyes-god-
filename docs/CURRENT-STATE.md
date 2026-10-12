@@ -1099,6 +1099,8 @@ stalled downloads are cancelled. Development and preview use the same handler.
 
 ## Remaining local service modules
 
+GDELT compact dates that do not name a real calendar instant keep the article with an unknown publication time.
+
 Overpass query validation, geometry simplification, disk caching and upstream
 transport now have separate modules; military-installation search reuses that
 transport. Regional briefing combines separate place, news and weather sources,
@@ -5123,8 +5125,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(regional): keep impossible compact article dates unknown
-
-Round-trip compact timestamps through a valid Date and retain the article with an unknown timestamp when its source date is impossible. Valid compact and ordinary ISO output formats are preserved.
