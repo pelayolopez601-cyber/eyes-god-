@@ -66,9 +66,9 @@ export function createApplicationRequestServices({
       throw new Error(`${label} unavailable (${response.status})`);
     return response.data;
   }
-  // Learn once per page whether the server has an Overpass instance, so an
+  // Remember valid capability decisions for the page, so an
   // unconfigured server is never asked (and never answers with an error).
-  // Discovery is bounded; a failed or timed-out probe is forgotten and not
+  // Discovery is bounded; failed, malformed or timed-out probes are forgotten and not
   // retried for a short backoff, during which queries go to the server as
   // they would against an older server without the probe.
   let boundaryCapability = null;
@@ -84,7 +84,7 @@ export function createApplicationRequestServices({
           return response.data.configured;
         boundaryCapability = null;
         boundaryProbeRetryAt = Date.now() + boundaryProbe.retryMs;
-        return null; // an older server: fall back to asking per query
+        return null; // capability unknown: let this query ask the server
       },
       (error) => {
         boundaryCapability = null;
