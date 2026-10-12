@@ -6,8 +6,6 @@
  * swap (2026-07-16).
  */
 
-import { acquisitionMsUtc } from './firmsCsv.js';
-
 /**
  * Map proxy fire records into internal fire records. Records with
  * non-finite coordinates are skipped; `index` is the post-skip position
@@ -75,8 +73,19 @@ export function parseAcquisitionMs(date, time, cache = new Map()) {
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
 
-  const parsed = acquisitionMsUtc(date, time);
-  const ms = Number.isFinite(parsed) ? parsed : 0;
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+  const day = Number(date.slice(8, 10));
+  const hhmm = String(time ?? '0000').padStart(4, '0');
+  const hours = Number(hhmm.slice(0, 2));
+  const minutes = Number(hhmm.slice(2, 4));
+  const valid =
+    Number.isFinite(year) &&
+    Number.isFinite(month) &&
+    Number.isFinite(day) &&
+    Number.isFinite(hours) &&
+    Number.isFinite(minutes);
+  const ms = valid ? Date.UTC(year, month - 1, day, hours, minutes) : 0;
   cache.set(key, ms);
   return ms;
 }

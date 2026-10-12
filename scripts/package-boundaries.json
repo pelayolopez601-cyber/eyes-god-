@@ -951,7 +951,6 @@
     "exports": ["./layers/firms"],
     "modules": [
       "src/data/firmsAdapt.js",
-      "src/data/firmsCsv.js",
       "src/data/firmsLabels.js",
       "src/data/iconOrientation.js",
       "src/layers/firms/anchors.js",
@@ -1531,7 +1530,6 @@
       "src/data/earthquakes.js",
       "src/data/fireAnchors.js",
       "src/data/firmsAdapt.js",
-      "src/data/firmsCsv.js",
       "src/data/firmsHeatmap.js",
       "src/data/firmsLabels.js",
       "src/data/flights.js",
@@ -2285,7 +2283,6 @@
       "src/data/detectionDraw.js",
       "src/data/detectionPolicy.js",
       "src/data/firmsAdapt.js",
-      "src/data/firmsCsv.js",
       "src/data/firmsLabels.js",
       "src/data/flowMatch.js",
       "src/data/focusDeemphasis.js",

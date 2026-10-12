@@ -1388,7 +1388,7 @@ accessible name remains "Don't show this again". Control behavior is unchanged.
 
 ## FIRMS source status
 
-FIRMS ingestion and adaptation reject impossible acquisition calendar dates while retaining valid UTC acquisition times.
+The FIRMS CSV parser rejects impossible acquisition calendar dates before the proxy filters records to the trailing 24 hours, while retaining valid UTC acquisition times.
 
 The FIRMS proxy records source success after appending its rows. If aggregation
 throws, that source reports failure without a contradictory success entry.
