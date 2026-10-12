@@ -1151,6 +1151,10 @@ The browser layers and their rendering remain in their existing modules.
 
 ## Terrain height cache bound
 
+Terrain-height requests validate every coordinate before transport. An invalid
+point rejects the complete programmatic batch; valid WGS84 boundary points are
+accepted, and an empty batch returns locally without a request.
+
 The client terrain-height resolver's in-memory cache is bounded at 20 000
 entries (`DEFAULT_MAX_CACHE_ENTRIES`, overridable per instance through
 `createTerrainHeights({ maxCacheEntries })`). Coordinate rounding makes repeated
@@ -5127,8 +5131,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(terrain): validate complete coordinate batches before requesting heights
-
-Validate every point before transport, preserve valid WGS84 boundary coordinates, and return an empty result locally for an empty batch.
