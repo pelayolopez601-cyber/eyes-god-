@@ -144,22 +144,6 @@ export function createApplicationRequestServices({
     },
     terrain: {
       async getHeights(points, { signal } = {}) {
-        signal?.throwIfAborted();
-        if (
-          !Array.isArray(points) ||
-          points.some(
-            (point) =>
-              !Number.isFinite(point?.lat) ||
-              !Number.isFinite(point?.lon) ||
-              Math.abs(point.lat) > 90 ||
-              Math.abs(point.lon) > 180,
-          )
-        ) {
-          throw new TypeError(
-            'Terrain points must have finite WGS84 latitude and longitude',
-          );
-        }
-        if (points.length === 0) return [];
         const query = points
           .map(({ lat, lon }) => `${lon.toFixed(5)},${lat.toFixed(5)}`)
           .join(';');

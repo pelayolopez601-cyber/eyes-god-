@@ -1151,9 +1151,9 @@ The browser layers and their rendering remain in their existing modules.
 
 ## Terrain height cache bound
 
-Terrain-height requests validate every coordinate before transport. An invalid
-point rejects the complete programmatic batch; valid WGS84 boundary points are
-accepted, and an empty batch returns locally without a request.
+The terrain proxy parser rejects finite longitudes outside [-180, 180] and
+latitudes outside [-90, 90] for every client before upstream resolution. One
+out-of-range point rejects the whole batch; inclusive WGS84 bounds remain valid.
 
 The client terrain-height resolver's in-memory cache is bounded at 20 000
 entries (`DEFAULT_MAX_CACHE_ENTRIES`, overridable per instance through
