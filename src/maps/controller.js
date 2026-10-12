@@ -142,7 +142,7 @@ export class MapSourceController {
     if (this._destroyed || !this._subscribers.size) return;
     const state = this.getState();
     for (const listener of [...this._subscribers]) {
-      if (this._destroyed || !this._subscribers.has(listener)) continue;
+      if (!this._subscribers.has(listener)) continue;
       try {
         listener(state);
       } catch (error) {

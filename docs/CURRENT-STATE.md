@@ -5005,6 +5005,8 @@ the project's MIT license; see `DATA_SOURCES.md`.
 
 ## Map source factories and coordination
 
+A subscriber removed, or a controller destroyed, during a settled-state delivery receives no further callbacks from that delivery.
+
 Map selection is composed from separate imagery, terrain and 3D factories.
 The default registry retains Google 3D, Bing Aerial/Labels, Esri Satellite and
 OSM, including their setup guidance and existing preset/share IDs. Esri still
@@ -5123,8 +5125,3 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
-
-
-### fix(maps): stop delivering settled state to detached subscribers
-
-Recheck listener ownership and controller lifetime before each settled-state callback. Still-active subscribers keep their ordering and exception isolation.
