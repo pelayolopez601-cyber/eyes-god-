@@ -1151,6 +1151,8 @@ The browser layers and their rendering remain in their existing modules.
 
 ## Terrain height cache bound
 
+Warm batch lookups also promote their cached entries in the least-recently-used eviction order.
+
 The client terrain-height resolver's in-memory cache is bounded at 20 000
 entries (`DEFAULT_MAX_CACHE_ENTRIES`, overridable per instance through
 `createTerrainHeights({ maxCacheEntries })`). Coordinate rounding makes repeated
