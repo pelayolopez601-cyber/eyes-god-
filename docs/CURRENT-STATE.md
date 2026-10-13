@@ -814,6 +814,35 @@ use the supplied asset resolver, including the preload path. Enrichment receives
 an abort signal and cannot update a later lifecycle after destruction. Existing
 camera, terrain floor, trail, selection and measured model-size policies remain.
 
+## Transponder emergency highlighting
+
+`src/data/aircraftEmergency.js` derives one status per poll from the Mode A
+squawk (7500 unlawful interference, 7600 radio failure, 7700 general emergency;
+ICAO-standard worldwide) and, where the feed carries it, the readsb ADS-B
+`emergency` field (adsb.lol; OpenSky state vectors carry the squawk only). An
+explicit ADS-B status wins over the squawk. `general`, `unlawful`, `nordo` and
+`downed` are emergencies; `minfuel` and `lifeguard` are priorities.
+
+Both aircraft layers keep `squawk` and `emergency` on each record and replace
+them on every poll, so the status is never sticky. Civil and military fleet
+billboards and Cockpit far-contact dots are tinted `EMERGENCY_TINT_CSS` red
+only for emergencies; priorities keep the normal tint. The military layer uses
+the same tint when a billboard is first created and when a tracked contact is
+released. While a broadcasting aircraft is tracked, the Cockpit aircraft-meta
+line reads `SQUAWK 7700 · GENERAL EMERGENCY` when the code names the status,
+else `ADS-B EMERGENCY · …` or `ADS-B PRIORITY · …`, in red. Analyst records and
+the voice query fields expose `squawk`, `emergency` (flag), `emergencyKind` and
+`emergencySource` (`squawk` when the Mode A code names the status, `ads-b` for
+the readsb field), plus `emergencyBroadcast` (`broadcasting squawk 7700 (general
+emergency)` vs `ADS-B reports general emergency`) and `lastContactAtMs`, the latest known general aircraft-message contact in epoch
+ms. Missing contact times retain the preceding known contact, or stay null if
+none is known. This does not timestamp the current emergency broadcast. Civil
+adsb.lol fallback preserves the readsb status in `emergencyByIcao` alongside
+unchanged OpenSky-compatible vectors, including clearing on subsequent polls.
+Compact voice results retain the emergency flag, source, phrase and named
+last-contact time; they do not label that time as the status receipt.
+`scripts/qa-emergency-squawk.mjs` proves the tint, HUD line and clearing.
+
 ## Browser live-source observations
 
 Flights, Military Flights and AIS Vessels obtain snapshots and optional history
@@ -3069,7 +3098,10 @@ its criteria cannot be silently ignored.
 | FIRMS Active Fires ▲   | NASA FIRMS live (VIIRS ×3 NRT + MODIS NRT, trailing 24h)                                                                                                                                        | `src/data/firmsHeatmap.js`                            | `/api/firms` (`FIRMS_MAP_KEY`)                           | 10 min (proxy TTL 30 min)                                                         |
 | Street Level 📷 | Street-level imagery; Mapillary is the first provider (vector tiles, Graph API, MapillaryJS) | `src/layers/streetLevel/` via `src/app/layers/streetLevel.js` | `/api/mapillary/status`, `/api/mapillary/tiles/coverage/{z}/{x}/{y}` (`MAPILLARY_CLIENT_TOKEN`) | camera-driven (320 ms debounce, ≤9 tiles, cached 24 h) |
 | Wind 🌬                 | NOAA GFS 10 m wind (keyless, 0.25°→1° grid; animated particles)                                                                                                                                 | `src/data/wind.js`                                    | `/api/wind`                                              | 1 h (forecast cycle)                                                              |
+| GNSS Integrity 📡 (`gnss-interference`) | adsb.lol point snapshot, low navigation accuracy binned per 0.5° cell (GEV NIC/NACp threshold + gpsjam.org formula and bands, keyless, ODbL) | `src/layers/gnss/` via `src/app/layers/gnss.js` | `/api/gnss-integrity` | 60s (server cache 60 s; 30 min rolling window) |
 | Fire Perimeters 🔥 | NIFC WFIGS current interagency perimeters (keyless, paged past the 2000-record cap); InciWeb catalog + incident page origin and update time checks for verified incident-page links | `src/layers/perimeters/` via `src/app/layers/perimeters.js` | `/api/fire-perimeters` + `/api/fire-perimeters/inciweb/*` | 5 min (server caches: catalog 1 h; publication 30 min) |
+
+GNSS Integrity fetches a capped adsb.lol snapshot around the view anchor, keeps each aircraft once per cell over 30 minutes as the camera pans, and draws low/medium/high ground rectangles only for cells with at least 3 aircraft. The row legend counts cells per band. The method is a GEV threshold plus gpsjam.org aggregation, not the gpsjam method: the per-aircraft rule (NIC < 7 or NACp < 8, borrowed from the US 14 CFR 91.227 ADS-B Out minima, or readsb's GPS-loss flag) and the 30-minute visited-view window are GEV-defined and unvalidated; only the cell formula and 2% / 10% bands come from gpsjam.org. `layer.provenance` (also on `getStats()`) records each part, and the proxy tags its rows with `classifier: gev-nic-nacp-v1`. Cells carry `state: navigation-integrity-anomaly` (medium/high) or `nominal`; `interpretation: suspected-gnss-interference` is a secondary reading, not a detection or a located emitter. Only DO-260A/B (ADS-B versions 1 and 2) direct 1090ES positions with a known `seen_pos` of 0–60 s count. Presence and degraded evidence age separately: a degraded report keeps the aircraft degraded in its cell for 30 minutes after that report, however many healthy reports follow, and an aircraft unheard for 30 minutes starts fresh. Rows are dated by the snapshot's observation time, which the proxy keeps on cached and stale answers and reports as `ageMs` on its own clock (so browser clock skew does not move the window); a replayed snapshot never restarts the window; the proxy stops serving a stale snapshot once it is older than 30 minutes, the source refuses an undated one, and cells age out on schedule during fetch failures or while there is no view anchor.
 
 Fire Perimeters uses capped, timed server reads with stale-on-error caching and a per-client limit. Unchanged snapshots retain geometry; link checks cancel on disable or selection change, and the row legend shows reported containment.
 
@@ -5179,3 +5211,9 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+GNSS integration reserves share token `3`, retaining published Street Level `0`.
+It uses the catalog source contract and voice layer manifest. Upstream 429
+Retry-After seconds/HTTP dates retain their full deadlines; overlapping requests
+keep the longest cooldown. Live GNSS QA requires a successful dated response
+even when there are no qualifying cells.
