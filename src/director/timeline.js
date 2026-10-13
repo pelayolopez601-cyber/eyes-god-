@@ -2,6 +2,7 @@ import {
   resolveCameraPose,
   resolveCameraMove,
   sampleCameraMove,
+  normalizeCameraLongitude,
 } from './camera.js';
 
 const DEFAULT_SHOT_DURATION_SEC = 4;
@@ -45,7 +46,12 @@ export function cameraAtProgress(fromCamera, toCamera, progress) {
   };
   return {
     lat: lerp(source.lat, target.lat),
-    lon: lerp(source.lon, target.lon),
+    lon:
+      t === 0
+        ? Number(source.lon)
+        : t === 1
+          ? Number(target.lon)
+          : normalizeCameraLongitude(lerpAngle(source.lon, target.lon)),
     alt: lerp(source.alt, target.alt),
     heading: lerpAngle(source.heading, target.heading),
     pitch: lerp(source.pitch, target.pitch),
