@@ -1,5 +1,7 @@
 # Changelog
 
+- Direction instruction limits report complete routes honestly and retain a final roundabout exit within the limit.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
