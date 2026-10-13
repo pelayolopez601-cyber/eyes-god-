@@ -1,5 +1,10 @@
 # Changelog
 
+- FIRMS fire data loads on hosts where IPv6 is unreachable and IPv4 is slow to
+  connect: a request whose every address fails to connect retries once over
+  IPv4, and FIRMS warnings name the underlying connection errors instead of
+  only `fetch failed`.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
