@@ -979,5 +979,12 @@
   "src/tools/views.test.mjs",
   "src/app/embed.test.mjs",
   "src/tools/globePanel.test.mjs",
-  "src/costEndpointThrottle.test.mjs"
+  "src/costEndpointThrottle.test.mjs",
+  "src/layers/usgsWater/source.test.mjs",
+  "src/layers/usgsWater/records.test.mjs",
+  "src/layers/usgsWater/index.test.mjs",
+  "src/layers/usgsWater/renderer.test.mjs",
+  "scripts/qa-usgs-water-fixtures.mjs",
+  "scripts/qa-usgs-water.mjs",
+  "scripts/qa-usgs-water-live.mjs"
 ]
