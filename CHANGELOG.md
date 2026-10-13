@@ -1,5 +1,8 @@
 # Changelog
 
+- Recent Imagery’s exported `setBox` and `searchHls` reject missing, blank or
+  boolean programmatic box edges instead of interpreting them as zero coordinates.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

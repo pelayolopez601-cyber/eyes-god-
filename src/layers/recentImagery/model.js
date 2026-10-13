@@ -77,12 +77,17 @@ const pad2 = (value) => String(value).padStart(2, '0');
  */
 function normalizeBox(box) {
   if (!box || typeof box !== 'object') return null;
-  const [west, south, east, north] = [
-    box.west,
-    box.south,
-    box.east,
-    box.north,
-  ].map(Number);
+  const edges = [box.west, box.south, box.east, box.north];
+  if (
+    edges.some(
+      (value) =>
+        value == null ||
+        typeof value === 'boolean' ||
+        (typeof value === 'string' && !value.trim()),
+    )
+  )
+    return null;
+  const [west, south, east, north] = edges.map(Number);
   if (![west, south, east, north].every(Number.isFinite)) return null;
   return {
     west,
