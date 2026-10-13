@@ -979,5 +979,10 @@
   "src/tools/views.test.mjs",
   "src/app/embed.test.mjs",
   "src/tools/globePanel.test.mjs",
-  "src/costEndpointThrottle.test.mjs"
+  "src/costEndpointThrottle.test.mjs",
+  "src/layers/sanAntonio/index.test.mjs",
+  "src/layers/sanAntonio/records.test.mjs",
+  "src/layers/sanAntonio/renderer.test.mjs",
+  "src/layers/sanAntonio/source.test.mjs",
+  "scripts/qa-san-antonio.mjs"
 ]
