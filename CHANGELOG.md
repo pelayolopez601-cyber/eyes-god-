@@ -1,5 +1,10 @@
 # Changelog
 
+- Prevent a compact Radio disclosure from covering Space Missions when the
+  adaptive right rail restores Context without calling the panel owner.
+  Repeated Context-open calls and rail-driven expansion both close the mini,
+  with a regression for auto-collapse restoration (raysung-2026, #804).
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

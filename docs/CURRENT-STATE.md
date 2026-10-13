@@ -1030,6 +1030,12 @@ panel, and honors keyboard focus on the right. Mobile layout still releases
 desktop allocation styles. Stable Display allocation avoids unnecessary style
 writes. This extraction does not change panel positions or layout defaults.
 
+A Context expansion, whether through a repeated panel-owner call or a right
+rail restore after tactical auto-collapse, dismisses any open compact Radio
+disclosure before revealing Context content. The compact launcher still works
+while Context remains collapsed. This is an ownership invariant, not a
+z-index workaround (#804).
+
 ## Surface keyboard lifecycle
 
 `ui/surfaces` owns the capture-phase keyboard listener, Tab cycling and return
