@@ -5061,6 +5061,8 @@ the project's MIT license; see `DATA_SOURCES.md`.
 
 ## Map source factories and coordination
 
+A subscriber removed, or a controller destroyed, during a settled-state delivery receives no further callbacks from that delivery.
+
 Map selection is composed from separate imagery, terrain and 3D factories.
 The default registry retains Google 3D, Bing Aerial/Labels, Esri Satellite and
 OSM, including their setup guidance and existing preset/share IDs. Esri still
