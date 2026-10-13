@@ -90,9 +90,22 @@ export function normalizeRegionalArticles(payload, limit = MAX_ARTICLES) {
 /** Normalize Open-Meteo current conditions into a small source-stamped record. */
 export function normalizeRegionalWeather(payload) {
   const current = payload?.current;
-  if (!current || !Number.isFinite(Number(current.temperature_2m))) return null;
+  if (
+    !current ||
+    current.temperature_2m == null ||
+    typeof current.temperature_2m === 'boolean' ||
+    (typeof current.temperature_2m === 'string' &&
+      !current.temperature_2m.trim()) ||
+    !Number.isFinite(Number(current.temperature_2m))
+  )
+    return null;
   const numberOrNull = (value) => {
-    if (value === null || value === undefined || value === '') return null;
+    if (
+      value == null ||
+      typeof value === 'boolean' ||
+      (typeof value === 'string' && !value.trim())
+    )
+      return null;
     return Number.isFinite(Number(value)) ? Number(value) : null;
   };
   // Open-Meteo reports zone-naive timestamps ("2026-08-17T00:15") that are UTC,
@@ -119,6 +132,12 @@ export function normalizeRegionalWeather(payload) {
 
 /** Translate the WMO weather code used by Open-Meteo into concise cockpit copy. */
 export function weatherCodeLabel(code) {
+  if (
+    code == null ||
+    typeof code === 'boolean' ||
+    (typeof code === 'string' && !code.trim())
+  )
+    return 'CONDITIONS UNKNOWN';
   const value = Number(code);
   if (!Number.isFinite(value)) return 'CONDITIONS UNKNOWN';
   if (value === 0) return 'CLEAR';

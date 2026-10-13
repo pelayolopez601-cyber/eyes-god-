@@ -1,5 +1,7 @@
 # Changelog
 
+- Weather records keep missing conditions unknown and refuse summaries without a measured temperature.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
