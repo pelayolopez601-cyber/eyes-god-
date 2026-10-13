@@ -95,6 +95,10 @@
 
 ## [Unreleased]
 
+- Strict coordinate parsing rejects queries with consecutive, leading, or trailing
+  delimiters (such as `40,,74` or `40, 74,`), ensuring malformed coordinates are not
+  mistaken for valid decimal pairs and continue to subsequent geocoders (#1021).
+
 - Keep later satellites when a TLE catalog entry is missing an orbital line.
   The parser skips the incomplete set and resumes at the next complete named
   set, instead of losing the rest of the group (#906).
