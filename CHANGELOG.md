@@ -1,5 +1,7 @@
 # Changelog
 
+- Malformed v2 share links now display `Shared layer selection could not be restored` after startup instead of silently falling back to defaults. Thanks to [daikaginza](https://github.com/daikaginza) for reporting #776 and [KnottyDyes](https://github.com/KnottyDyes) for independently identifying the silent layer-state drop.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
