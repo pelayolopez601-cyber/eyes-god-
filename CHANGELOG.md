@@ -1,5 +1,7 @@
 # Changelog
 
+- Coordinate searches refuse empty latitude or longitude components instead of navigating to an unintended location.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
