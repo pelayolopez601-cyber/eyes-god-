@@ -1,5 +1,10 @@
 # Changelog
 
+- A Radio Browser mirror answering 204, 205 or 304, or a status outside
+  200–599, no longer crashes the local dev/preview server. Null-body statuses
+  get an empty body; anything else that cannot become a response fails that
+  mirror so the next one is tried.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

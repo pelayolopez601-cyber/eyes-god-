@@ -1135,9 +1135,12 @@ CCTV catalog acquisition, source normalization and frame/media delivery now live
 in separate modules. Each CCTV factory owns its catalog and health state; its
 `sourceRoot` option resolves relative source files against the application root.
 Radio Browser station normalization, restricted outbound transport and directory
-caching are separate modules. Node-only package entries expose both provider
-factories. Routes, payloads, fallback behavior and existing dev/preview hook
-registration are preserved; browser rendering is unchanged.
+caching are separate modules. The pinned transport gives a mirror's 204, 205 or
+304 reply an empty body and fails any reply outside 200–599 without throwing
+outside its promise, so an unusual mirror status cannot crash the server.
+Node-only package entries expose both provider factories. Routes, payloads,
+fallback behavior and existing dev/preview hook registration are preserved;
+browser rendering is unchanged.
 
 ## Terrain, traffic, fire and bike-share provider modules
 
