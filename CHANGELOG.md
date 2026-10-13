@@ -1,5 +1,8 @@
 # Changelog
 
+- Allow Bing Maps HTTP tile origins (`ecn.t0-3` and `ak.dynamic.t0-3`) in Content-Security-Policy
+  for Bing Aerial and Bing Labels under Cesium ion on local development and preview pages.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
