@@ -95,6 +95,13 @@
 
 ## [Unreleased]
 
+- Refresh Norway's datacenters from a Geofabrik OpenStreetMap extract
+  (2026-10-05). Troll Housing joins the layer (4,352 features) and four
+  Norwegian sites pick up current OSM tags; no site moved or was removed.
+  `scripts/build-datacenters-norway.py` reproduces or `--verify`s the merge,
+  touching only features inside Geofabrik's Norway boundary, and the dataset
+  README records the extract, checksum and filter.
+
 - Street Level: Google Street View is the second provider. On the Google 3D
   map (Google's terms keep it off other maps), light its chip (off by
   default: every panorama is billed to the Google Maps key, which needs the
