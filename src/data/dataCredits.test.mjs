@@ -120,3 +120,16 @@ test('tile attribution follows source changes and viewers have independent owner
   assert.equal(a.credits.size, 0);
   assert.equal(b.credits.size, 1);
 });
+
+test('Traffic SA is credited with its Creative Commons licence', () => {
+  const credit = DATA_CREDITS.find((entry) => entry.key === 'traffic-sa');
+  assert.ok(credit, 'Traffic SA data must be credited');
+  assert.match(
+    credit.html,
+    /Roadworks, incidents and closures: .*Traffic SA.*Department for Infrastructure and Transport, Government of South Australia/,
+  );
+  assert.match(
+    credit.html,
+    /href="https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/"[^>]*>CC BY 4\.0</,
+  );
+});
