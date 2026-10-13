@@ -1,5 +1,7 @@
 # Changelog
 
+- The terrain proxy refuses out-of-range WGS84 coordinates before upstream resolution for every client.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
