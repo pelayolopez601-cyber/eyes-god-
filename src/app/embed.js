@@ -13,7 +13,11 @@
 
 import * as Cesium from 'cesium';
 import { announceNavigationAuthority } from '../navigationPolicy.js';
-import { annotationsFromParams, createView } from '../view/index.js';
+import {
+  annotationsFromParams,
+  streetLevelFromParams,
+  createView,
+} from '../view/index.js';
 
 export const EMBED_VIEW_MESSAGE = 'gev:view';
 export const EMBED_APPLIED_MESSAGE = 'gev:view-applied';
@@ -143,6 +147,16 @@ function flyTo(viewer, camera) {
   });
 }
 
+/** The `show_street_level` arguments for a view's street-level photos. */
+function streetLevelArgs(streetLevel) {
+  return {
+    latitude: streetLevel.lat,
+    longitude: streetLevel.lon,
+    ...(streetLevel.provider ? { provider: streetLevel.provider } : {}),
+    fly: true,
+  };
+}
+
 /**
  * Make the app show a view: style and map, exactly the view's layers,
  * annotations, the camera, and the followed entity. Each step runs through the
@@ -185,6 +199,12 @@ export async function applyView(
   await act('clear_annotations', {});
   if (view.annotations.length)
     await act('annotate_map', { annotations: [...view.annotations] });
+  if (view.street_level) {
+    // The photos frame the camera: the action flies to the point at street
+    // level, lights the source and opens the nearest photo.
+    await act('show_street_level', streetLevelArgs(view.street_level));
+    return steps;
+  }
   if (!view.follow) {
     steps.push({ step: 'camera', ok: await flyTo(viewer, view.camera) });
     return steps;
@@ -232,12 +252,20 @@ export function installViews({
   windowRef = globalThis.window,
 }) {
   const ready = Promise.resolve(shell.initialRestorePromise).catch(() => {});
-  const linked = annotationsFromParams(
-    new URLSearchParams(String(location?.hash || '').replace(/^#/, '')),
+  const hashParams = new URLSearchParams(
+    String(location?.hash || '').replace(/^#/, ''),
   );
+  const linked = annotationsFromParams(hashParams);
   if (linked.length)
     void ready.then(() => {
       if (!signal?.aborted) void run('annotate_map', { annotations: linked });
+    });
+  // A link to street-level photos opens them once the link has restored.
+  const streetLevel = streetLevelFromParams(hashParams);
+  if (streetLevel)
+    void ready.then(() => {
+      if (!signal?.aborted)
+        void run('show_street_level', streetLevelArgs(streetLevel));
     });
   if (!isEmbedded(location)) return () => {};
 

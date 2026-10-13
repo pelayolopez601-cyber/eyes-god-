@@ -113,3 +113,45 @@ test('links carry a camera, style, map and an entity to follow', async () => {
     /Give a view, an area, or a camera with lat and lon/,
   );
 });
+
+test('links can open street-level photos at the area, on the map the source needs', async () => {
+  const { viewFromParams } = await import('../../view/index.js');
+  const catalog = composeCatalog({
+    tools: coreTools,
+    services: { app: { baseUrl: 'http://localhost:4173/' } },
+  });
+  const result = await catalog.call('show_in_gods_eye_view', {
+    area: { lat: 38.5799, lon: -121.4937, radius_km: 1 },
+    street_level: { provider: 'google' },
+  });
+  const { view } = result.data;
+  assert.equal(view.map, 'photoreal');
+  assert.deepEqual(view.layers, ['street-level']);
+  assert.deepEqual(view.street_level, {
+    provider: 'google',
+    lat: 38.5799,
+    lon: -121.4937,
+  });
+  const params = new URLSearchParams(new URL(result.data.url).hash.slice(1));
+  assert.equal(params.get('sl'), 'google,38.57990,-121.49370');
+  assert.equal(params.get('map'), 'photoreal');
+  assert.deepEqual(viewFromParams(params), view);
+
+  const point = await catalog.call('show_in_gods_eye_view', {
+    view,
+    street_level: { provider: 'mapillary', lat: 38.58, lon: -121.49 },
+  });
+  assert.deepEqual(point.data.view.street_level, {
+    provider: 'mapillary',
+    lat: 38.58,
+    lon: -121.49,
+  });
+  await assert.rejects(
+    catalog.call('show_in_gods_eye_view', {
+      area: { lat: 0, lon: 0, radius_km: 1 },
+      map: 'osm',
+      street_level: { provider: 'google' },
+    }),
+    /photoreal/,
+  );
+});

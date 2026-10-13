@@ -1,5 +1,14 @@
 # Changelog
 
+- "Show me X on Street View" (or on Mapillary): a `show_street_level` voice and
+  typed action flies to the place, switches to Google 3D when the source needs
+  it, lights that source in Street Level, turns the layer on and opens the
+  nearest photo, reporting which step failed. Views and share links carry the
+  same request (`street_level`, `sl=`), so `show_in_gods_eye_view` and a link
+  can open a panorama at a place. Street View lookups from a geocoded place
+  search up to 250 m; clicks keep 50 m. An unavailable map stack now reports
+  the controller's own reason instead of always asking for a Cesium ion token.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

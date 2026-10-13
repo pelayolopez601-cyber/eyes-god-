@@ -818,3 +818,28 @@ test('an empty provider composition enables and tears down without acquiring ima
   layer.enable(viewer);
   assert.deepEqual(layer.getUIState().providers, []);
 });
+
+test('openNearest searches wider on request, never past the cap, and says how far it looked', async (t) => {
+  const { layer, fake } = await withStreetView(t, { nearest: () => null });
+  layer.setProviderEnabled('google', true);
+  await settle();
+  await layer.openNearest(
+    { lat: 38.58, lon: -121.49 },
+    { providerIds: ['google'], frame: false, radiusM: 250 },
+  );
+  assert.equal(fake.lookups.at(-1).radius, 250);
+  assert.equal(
+    layer.getUIState().street.error,
+    'No street-level imagery within 250 m of that point',
+  );
+  await layer.openNearest(
+    { lat: 38.58, lon: -121.49 },
+    { providerIds: ['google'], frame: false, radiusM: 5000 },
+  );
+  assert.equal(fake.lookups.at(-1).radius, 250, 'capped');
+  await layer.openNearest(
+    { lat: 38.58, lon: -121.49 },
+    { providerIds: ['google'], frame: false },
+  );
+  assert.equal(fake.lookups.at(-1).radius, 50, 'a click keeps the default');
+});

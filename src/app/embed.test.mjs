@@ -323,3 +323,58 @@ test('a followed aircraft owns the camera, and cockpit view is entered after it'
     /no cockpit view/,
   );
 });
+
+test('a view with street-level photos lets the action fly and open them', async () => {
+  const viewer = fakeViewer();
+  const { calls, run } = recorder();
+  const view = createView({
+    camera: { lat: 38.5799, lon: -121.4937, altitude_m: 500 },
+    street_level: { provider: 'google' },
+  });
+  const steps = await applyView(view, {
+    viewer,
+    dataManager: fakeLayers(new Set()),
+    run,
+  });
+  assert.deepEqual(
+    calls.map(([name]) => name),
+    [
+      'set_map_stack',
+      'set_layer_visibility',
+      'stop_tracking',
+      'clear_annotations',
+      'show_street_level',
+    ],
+  );
+  assert.deepEqual(calls.at(-1)[1], {
+    latitude: 38.5799,
+    longitude: -121.4937,
+    provider: 'google',
+    fly: true,
+  });
+  assert.equal(viewer.flights.length, 0, 'the action frames the camera');
+  assert.ok(steps.every((step) => step.ok));
+  assert.equal(steps.at(-1).step, 'show_street_level');
+});
+
+test('a link to street-level photos opens them after it restores', async () => {
+  const { calls, run } = recorder();
+  installViews({
+    shell: { initialRestorePromise: Promise.resolve() },
+    viewer: fakeViewer(),
+    dataManager: fakeLayers(new Set()),
+    run,
+    location: {
+      search: '',
+      hash: '#v=2&lat=1&lon=2&sl=mapillary,38.58000,-121.49000',
+    },
+    windowRef: new EventTarget(),
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(calls, [
+    [
+      'show_street_level',
+      { latitude: 38.58, longitude: -121.49, provider: 'mapillary', fly: true },
+    ],
+  ]);
+});

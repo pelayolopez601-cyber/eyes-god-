@@ -11,6 +11,7 @@ import {
   decodeLayerStateParams,
   encodeLayerStateParams,
 } from '../data/layerState.js';
+import { encodeIdSwitches } from '../data/idSwitches.js';
 
 /** Visual styles by internal name, with the name share links use. */
 export const STYLE_URL_NAMES = Object.freeze({
@@ -64,6 +65,19 @@ const FOLLOWABLE = Object.freeze({
 });
 
 export const VIEW_FOLLOW_KINDS = Object.freeze(Object.keys(FOLLOWABLE));
+
+/**
+ * Street-level imagery sources a view can open, the layer that shows them and
+ * the map a source needs (Google's terms allow Street View beside Google maps
+ * only). Literal here: this module stays portable.
+ */
+const STREET_LEVEL_LAYER = 'street-level';
+export const VIEW_STREET_LEVEL_PROVIDERS = Object.freeze([
+  'google',
+  'mapillary',
+]);
+const STREET_LEVEL_MAP = Object.freeze({ google: 'photoreal' });
+const STREET_LEVEL_PARAM = 'sl';
 
 /** Annotation kinds the app draws, as in its annotate_map action. */
 export const VIEW_ANNOTATION_TYPES = Object.freeze([
@@ -162,6 +176,19 @@ export const VIEW_PROPERTIES = Object.freeze({
       additionalProperties: false,
     },
   }),
+  street_level: Object.freeze({
+    type: 'object',
+    description:
+      'Open street-level photos at a point: Google Street View (google; the ' +
+      'map becomes Google 3D) or Mapillary. lat/lon default to the view ' +
+      'centre. The app flies there and opens the nearest photo.',
+    properties: {
+      provider: { type: 'string', enum: [...VIEW_STREET_LEVEL_PROVIDERS] },
+      lat: { type: 'number', minimum: -90, maximum: 90 },
+      lon: { type: 'number', minimum: -180, maximum: 180 },
+    },
+    additionalProperties: false,
+  }),
   follow: Object.freeze({
     type: 'object',
     description:
@@ -251,6 +278,7 @@ export function createView({
   map = null,
   follow = null,
   annotations = [],
+  street_level: streetLevel = null,
 } = {}) {
   if (!Number.isFinite(camera?.lat) || !Number.isFinite(camera?.lon))
     throw new TypeError('A view needs a camera lat and lon');
@@ -263,10 +291,31 @@ export function createView({
     throw new TypeError(`Cannot follow a ${follow.kind}`);
   if (follow?.cockpit === true && !followed.cockpit)
     throw new TypeError(`A ${follow.kind} has no cockpit view`);
+  let street = null;
+  if (streetLevel) {
+    const provider = streetLevel.provider ?? null;
+    if (provider !== null && !VIEW_STREET_LEVEL_PROVIDERS.includes(provider))
+      throw new TypeError(`Unknown street-level source: ${provider}`);
+    const needs = provider ? STREET_LEVEL_MAP[provider] || null : null;
+    if (needs && map !== null && map !== needs)
+      throw new TypeError(
+        `${provider} street-level imagery shows only on the ${needs} map`,
+      );
+    if (needs) map = needs;
+    // The point defaults to the camera's: a view "of X" opens photos at X.
+    const lat = latitude(streetLevel.lat) ?? camera.lat;
+    const lon = longitude(streetLevel.lon) ?? camera.lon;
+    street = Object.freeze({
+      ...(provider ? { provider } : {}),
+      lat: round(clamp(lat, -90, 90), 5),
+      lon: round(clamp(lon, -180, 180), 5),
+    });
+  }
   const enabled = new Set(
     layers.filter((layer) => REGISTERED_LAYER_IDS.includes(layer)),
   );
   if (followed) enabled.add(followed.layer);
+  if (street) enabled.add(STREET_LEVEL_LAYER);
   return Object.freeze({
     camera: Object.freeze({
       lat: round(clamp(camera.lat, -90, 90), 4),
@@ -295,6 +344,7 @@ export function createView({
         .map(annotationOf)
         .filter(Boolean),
     ),
+    street_level: street,
   });
 }
 
@@ -320,8 +370,29 @@ export function viewToParams(view) {
         ...state.options[followed.owner],
         [followed.key]: view.follow.id,
       };
+    // The restored layer lights the source the photos come from.
+    const provider = view.street_level?.provider;
+    if (provider)
+      state.options[STREET_LEVEL_LAYER] = {
+        ...state.options[STREET_LEVEL_LAYER],
+        mapillary: provider === 'mapillary',
+        providerSwitches: encodeIdSwitches(
+          VIEW_STREET_LEVEL_PROVIDERS.filter((id) => id !== 'mapillary').map(
+            (id) => [id, id === provider],
+          ),
+        ),
+      };
     encodeLayerStateParams(params, state);
   }
+  if (view.street_level)
+    params.set(
+      STREET_LEVEL_PARAM,
+      [
+        view.street_level.provider ?? '',
+        view.street_level.lat.toFixed(5),
+        view.street_level.lon.toFixed(5),
+      ].join(','),
+    );
   if (view.annotations.length) {
     const encoded = JSON.stringify(view.annotations);
     if (encoded.length <= MAX_ANNOTATION_PARAM_CHARS)
@@ -342,6 +413,23 @@ export function annotationsFromParams(params) {
   } catch {
     return [];
   }
+}
+
+/**
+ * The street-level photos a share link opens (`sl=<source>,<lat>,<lon>`, the
+ * source optional), or null.
+ */
+export function streetLevelFromParams(params) {
+  const raw = params.get(STREET_LEVEL_PARAM);
+  if (!raw || raw.length > 64) return null;
+  const [provider, lat, lon] = raw.split(',');
+  if (provider && !VIEW_STREET_LEVEL_PROVIDERS.includes(provider)) return null;
+  const point = {
+    lat: latitude(Number.parseFloat(lat)),
+    lon: longitude(Number.parseFloat(lon)),
+  };
+  if (point.lat === undefined || point.lon === undefined) return null;
+  return { ...(provider ? { provider } : {}), ...point };
 }
 
 /** The view a set of share-link hash parameters restores, or null. */
@@ -374,6 +462,7 @@ export function viewFromParams(params) {
     map: VIEW_MAPS.includes(map) ? map : null,
     follow,
     annotations: annotationsFromParams(params),
+    street_level: streetLevelFromParams(params),
   });
 }
 

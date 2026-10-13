@@ -48,7 +48,7 @@ export function filtersOf(provider) {
  * @property {(sequenceId: string) => Promise<void>} [selectSequence]
  * @property {() => void} [clearSequence]
  * @property {() => {selectedId: string|null, images: number, loading: boolean}} [sequenceStats]
- * @property {(point: {lat: number, lon: number}, options?: {signal?: AbortSignal}) => Promise<string|null>} nearestImage   An aborted lookup gives up (it may reject with an AbortError).
+ * @property {(point: {lat: number, lon: number}, options?: {signal?: AbortSignal, radiusM?: number}) => Promise<string|null>} nearestImage   An aborted lookup gives up (it may reject with an AbortError). `radiusM` asks for a wider search than NEAREST_RADIUS_M; a provider that cannot search wider ignores it.
  * @property {ViewerAdapter} viewer
  *
  * @typedef {object} GroundCaster

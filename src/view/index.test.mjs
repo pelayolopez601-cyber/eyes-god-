@@ -126,3 +126,68 @@ test('annotations travel in the link, keeping only what the app draws', async ()
   // Too long for a link: the view keeps them, the link leaves them out.
   assert.equal(viewToParams(many).has('an'), false);
 });
+
+test('street-level photos travel in the link, light their source and bring their map', async () => {
+  const { streetLevelFromParams, VIEW_STREET_LEVEL_PROVIDERS } =
+    await import('./index.js');
+  const { decodeLayerStateParams } = await import('../data/layerState.js');
+  assert.deepEqual(VIEW_STREET_LEVEL_PROVIDERS, ['google', 'mapillary']);
+  const view = createView({
+    camera: { lat: 38.5799, lon: -121.4937, altitude_m: 400 },
+    street_level: { provider: 'google' },
+  });
+  assert.equal(view.map, 'photoreal', 'Street View brings Google 3D');
+  assert.deepEqual(view.layers, ['street-level']);
+  assert.deepEqual(view.street_level, {
+    provider: 'google',
+    lat: 38.5799,
+    lon: -121.4937,
+  });
+  const params = viewToParams(view);
+  assert.equal(params.get('sl'), 'google,38.57990,-121.49370');
+  assert.deepEqual(viewFromParams(params), view);
+  const state = decodeLayerStateParams(params);
+  assert.deepEqual(state.enabledLayerIds, ['street-level']);
+  assert.equal(state.options['street-level'].mapillary, false);
+  assert.equal(state.options['street-level'].providerSwitches, 'google-1');
+
+  const mapillary = createView({
+    camera: { lat: 1, lon: 2 },
+    map: 'osm',
+    street_level: { provider: 'mapillary', lat: 1.00001, lon: 2.00001 },
+  });
+  assert.equal(mapillary.map, 'osm', 'Mapillary shows on any map');
+  assert.deepEqual(viewFromParams(viewToParams(mapillary)), mapillary);
+  const anySource = createView({
+    camera: { lat: 1, lon: 2 },
+    street_level: {},
+  });
+  assert.deepEqual(anySource.street_level, { lat: 1, lon: 2 });
+  assert.equal(viewToParams(anySource).get('sl'), ',1.00000,2.00000');
+  assert.deepEqual(viewFromParams(viewToParams(anySource)), anySource);
+
+  assert.throws(
+    () =>
+      createView({
+        camera: { lat: 1, lon: 2 },
+        map: 'osm',
+        street_level: { provider: 'google' },
+      }),
+    /photoreal/,
+  );
+  assert.throws(
+    () =>
+      createView({
+        camera: { lat: 1, lon: 2 },
+        street_level: { provider: 'kartaview' },
+      }),
+    /Unknown street-level source/,
+  );
+  assert.equal(
+    streetLevelFromParams(new URLSearchParams('sl=google,x,y')),
+    null,
+  );
+  assert.equal(streetLevelFromParams(new URLSearchParams('sl=bing,1,2')), null);
+  assert.equal(streetLevelFromParams(new URLSearchParams('lat=1')), null);
+  assert.equal(createView({ camera: { lat: 1, lon: 2 } }).street_level, null);
+});

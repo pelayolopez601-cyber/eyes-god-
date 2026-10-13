@@ -25,6 +25,10 @@ import {
   isContextRecordActive,
 } from '../data/contextStore.js';
 import { CCTV_FOCUS_RESULT } from '../layers/cctv/index.js';
+import {
+  NEAREST_RADIUS_MAX_M as STREET_LEVEL_WIDE_RADIUS_M,
+  STREET_LEVEL_LAYER_ID,
+} from '../layers/streetLevel/policy.js';
 import { contextModeWord } from '../contextModePolicy.js';
 import {
   createAnalystEngine,
@@ -685,6 +689,18 @@ export function createGevActionRunner({
           onGround: false,
         },
       };
+    }
+
+    if (name === 'show_street_level') {
+      return showStreetLevel(args, {
+        dataManager,
+        styleManager,
+        placeSearch,
+        runGevAction,
+        runOptions,
+        current,
+        reportProgress,
+      });
     }
 
     if (name === 'set_visual_style') {
@@ -3013,6 +3029,223 @@ function normalizeStyle(value) {
   return null;
 }
 
+/**
+ * "Show me <place> on Street View / on Mapillary": fly to the place, make sure
+ * the imagery source's map is up, light that source in Street Level, turn the
+ * layer on and open the nearest image. One source at a time, as the panel
+ * does; the choice persists like a chip click. Each stage reports its own
+ * failure so speech can say which part did not happen.
+ */
+export async function showStreetLevel(
+  args,
+  {
+    dataManager,
+    styleManager,
+    placeSearch,
+    runGevAction,
+    runOptions = {},
+    current = () => true,
+    reportProgress = () => {},
+  },
+) {
+  const action = 'show_street_level';
+  const fail = (stage, error, extra = {}) => ({
+    ok: false,
+    action,
+    stage,
+    cancelled: !current(),
+    error,
+    ...extra,
+  });
+  const query = String(args.query || '').trim();
+  const latitude = Number(args.latitude);
+  const longitude = Number(args.longitude);
+  const hasCoordinates =
+    args.latitude != null &&
+    args.longitude != null &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
+  if (!query && !hasCoordinates)
+    return fail(
+      'location',
+      'Street-level imagery needs a place name or latitude and longitude',
+    );
+  const layerModule =
+    dataManager?.layers?.get?.(STREET_LEVEL_LAYER_ID)?.module || null;
+  if (!layerModule || typeof layerModule.openNearest !== 'function')
+    return fail('provider', 'Street Level is unavailable');
+  const providerIds = Array.isArray(layerModule.providerIds)
+    ? layerModule.providerIds
+    : [];
+
+  // The source: asked for, else the one lit now, else the first registered.
+  const requested = String(args.provider || '')
+    .trim()
+    .toLowerCase();
+  let provider = null;
+  if (requested) {
+    if (!providerIds.includes(requested))
+      return fail(
+        'provider',
+        `${requested} is not a street-level imagery source here`,
+      );
+    provider = requested;
+  } else {
+    const params = dataManager.getLayerParams?.(STREET_LEVEL_LAYER_ID) || {};
+    provider =
+      providerIds.find((id) => params[id] === true) || providerIds[0] || null;
+  }
+  if (!provider)
+    return fail('provider', 'No street-level imagery source is configured');
+
+  // The place first: a name that geocodes to nothing changes nothing else.
+  let label = query || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  let point = null;
+  let location = null;
+  if (args.fly === false) {
+    if (hasCoordinates) point = { lat: latitude, lon: longitude };
+    else {
+      reportProgress('search', query);
+      const outcome = await placeSearch.geocode(query, {
+        signal: runOptions.signal,
+      });
+      const place = outcome?.place;
+      if (!current())
+        return fail('location', 'Street-level request was cancelled');
+      if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lng))
+        return fail('location', `Could not find ${query}`);
+      point = { lat: place.lat, lon: place.lng };
+      label = place.label || query;
+    }
+  } else {
+    location = await runGevAction(
+      'fly_to_location',
+      {
+        ...(hasCoordinates ? { latitude, longitude } : { query }),
+        viewMode: 'close',
+        waitForArrival: true,
+      },
+      runOptions,
+    );
+    if (location?.ok !== true || !current())
+      return fail(
+        'location',
+        location?.error || `Could not arrive at ${location?.label || label}`,
+        { cancelled: !current() || Boolean(location?.cancelled), location },
+      );
+    label = location.label || label;
+    if (
+      !Number.isFinite(location.latitude) ||
+      !Number.isFinite(location.longitude)
+    )
+      return fail(
+        'location',
+        `${label} has no position to look for imagery at`,
+        { location },
+      );
+    point = { lat: location.latitude, lon: location.longitude };
+  }
+
+  // The source's map, when it needs one (Street View: Google 3D only).
+  const requiredStack = layerModule.requiredMapStack?.(provider) || null;
+  const activeStack = styleManager?.mapStackController?.getActiveId?.() ?? null;
+  if (requiredStack && activeStack !== requiredStack) {
+    reportProgress('map', requiredStack);
+    const map = await runGevAction(
+      'set_map_stack',
+      { stack: requiredStack },
+      runOptions,
+    );
+    if (map?.ok !== true || !current())
+      return fail(
+        'map',
+        map?.error || `Could not switch to the ${requiredStack} map`,
+        { map, location },
+      );
+  }
+
+  // Light the source the way a chip click does, so the choice is kept.
+  const switches = Object.fromEntries(
+    providerIds.map((id) => [id, id === provider]),
+  );
+  if (typeof dataManager.setLayerParams === 'function')
+    dataManager.setLayerParams(STREET_LEVEL_LAYER_ID, switches, {
+      origin: 'voice',
+    });
+  else layerModule.setProviderEnabled?.(provider, true);
+  let layer = null;
+  if (!dataManager.isEnabled?.(STREET_LEVEL_LAYER_ID)) {
+    layer = await runGevAction(
+      'set_layer_visibility',
+      { layerId: STREET_LEVEL_LAYER_ID, enabled: true },
+      runOptions,
+    );
+    if (layer?.ok !== true || !current())
+      return fail(
+        'layer',
+        layer?.error || 'Street Level could not be enabled',
+        { cancelled: !current() || Boolean(layer?.cancelled), layer, location },
+      );
+  }
+
+  // Only now is the source listed (its map is up): check it has its key.
+  const ui = layerModule.getUIState?.() || {};
+  const snapshot =
+    (ui.providers || []).find((entry) => entry.id === provider) || null;
+  if (!snapshot)
+    return fail(
+      'provider',
+      ui.coverage?.hint || `${provider} is not available on this map`,
+      { location },
+    );
+  const providerName = snapshot.name || provider;
+  if (snapshot.keyRequired === true || snapshot.configured === false)
+    return fail(
+      'key',
+      snapshot.error || snapshot.hint || `${providerName} needs its key`,
+      {
+        provider,
+        providerName,
+        keyRejected: snapshot.keyRejected === true,
+        keyAlternatives: ui.keyAlternatives || [],
+        location,
+      },
+    );
+
+  // A source with no coverage to click (Street View) is searched wider: a
+  // geocoded landmark is rarely within 50 m of a street.
+  reportProgress('imagery', label);
+  const opened = await layerModule.openNearest(point, {
+    providerIds: [provider],
+    frame: false,
+    ...(snapshot.groundClick === true
+      ? { radiusM: STREET_LEVEL_WIDE_RADIUS_M }
+      : {}),
+  });
+  const street = layerModule.getUIState?.()?.street || {};
+  if (opened !== true || !current())
+    return fail(
+      'imagery',
+      street.error || `No ${providerName} imagery near ${label}`,
+      { provider, providerName, label, location },
+    );
+  return {
+    ok: true,
+    action,
+    provider,
+    providerName,
+    label,
+    imageId: street.imageId ?? null,
+    title: street.title ?? null,
+    capturedAt: street.capturedAt ?? null,
+    capturedAtPrecision: street.capturedAtPrecision ?? null,
+    position: street.position ?? null,
+    externalUrl: street.externalUrl ?? null,
+    flew: args.fly !== false,
+    ...(location ? { location: location.label } : {}),
+  };
+}
+
 async function flyToRequestedLocation(
   viewer,
   args,
@@ -3077,11 +3310,13 @@ async function flyToRequestedLocation(
     );
     if (result === false)
       return cancelled(CITY_POIS[locationId]?.name || locationId);
+    const centre = CITY_POIS[locationId]?.pois?.[0] || null;
     const response = {
       ok: Boolean(result),
       action: 'fly_to_location',
       locationId,
       label: CITY_POIS[locationId]?.name || locationId,
+      ...(centre ? { latitude: centre.lat, longitude: centre.lon } : {}),
       rangeM: result?.range ? Math.round(result.range) : rangeM || null,
       navigationMode: rangeM
         ? 'explicit-range'
@@ -3142,6 +3377,7 @@ async function flyToRequestedLocation(
         action: 'fly_to_location',
         query,
         label: poi?.name || query,
+        ...(poi ? { latitude: poi.lat, longitude: poi.lon } : {}),
         navigationMode: rangeM ? 'preset-poi-range' : 'preset-poi',
         rangeM: result?.range ? Math.round(result.range) : rangeM || null,
       };
@@ -3172,6 +3408,10 @@ async function flyToRequestedLocation(
       action: 'fly_to_location',
       query,
       label: destination?.label || query,
+      ...(Number.isFinite(destination?.latitude) &&
+      Number.isFinite(destination?.longitude)
+        ? { latitude: destination.latitude, longitude: destination.longitude }
+        : {}),
       navigationMode: destination?.navigationMode || null,
       rangeM: destination?.rangeM || rangeM || null,
     };

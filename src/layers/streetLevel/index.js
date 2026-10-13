@@ -25,6 +25,7 @@ import {
   AIM_AT_GROUND_MESSAGE,
   FOLLOW_MAP_STACK_ID,
   NEAREST_RADIUS_M,
+  NEAREST_RADIUS_MAX_M,
   POSITION_PICK_ID,
   STREET_LEVEL_LAYER_ID,
 } from './policy.js';
@@ -473,6 +474,11 @@ export function createStreetLevelLayer({
     },
     /** Registered providers, in chip order. */
     providerIds: definitionsFrozen.map((def) => def.id),
+    /** The map stack a provider needs (`requiresMapStack`), or null for any. */
+    requiredMapStack(providerId) {
+      const def = definitionsFrozen.find((entry) => entry.id === providerId);
+      return def?.requiresMapStack || null;
+    },
     getSourceAvailability() {
       const available = definitionsFrozen.length > 0;
       return {
@@ -640,12 +646,17 @@ export function createStreetLevelLayer({
     /**
      * Open the nearest image of the active providers (or `providerIds`) near
      * a point, else the view centre, or with `aim: 'screen-centre'` the ground
-     * under the screen centre (sky: nothing).
+     * under the screen centre (sky: nothing). `radiusM` widens the search for
+     * providers that can (a geocoded landmark is rarely within 50 m of a
+     * street); clicks keep the default.
      */
     async openNearest(
       point,
-      { providerIds = null, frame = true, aim = 'view' } = {},
+      { providerIds = null, frame = true, aim = 'view', radiusM = null } = {},
     ) {
+      const radius = Number.isFinite(radiusM)
+        ? Math.min(NEAREST_RADIUS_MAX_M, Math.max(1, radiusM))
+        : NEAREST_RADIUS_M;
       let view = point;
       if (!view && aim === 'screen-centre') {
         view = screenCentreGround();
@@ -677,7 +688,9 @@ export function createStreetLevelLayer({
         try {
           imageId = await entry.instance.nearestImage(
             { lat: view.lat, lon: view.lon },
-            { signal },
+            radius === NEAREST_RADIUS_M
+              ? { signal }
+              : { signal, radiusM: radius },
           );
         } catch (error) {
           // Overtaken: whatever replaced it owns the panel, errors included.
@@ -701,7 +714,7 @@ export function createStreetLevelLayer({
       if (state.enabled && stillOn)
         state.street.error =
           lastError?.message ||
-          `No street-level imagery within ${NEAREST_RADIUS_M} m of ${point ? 'that point' : 'the view centre'}`;
+          `No street-level imagery within ${radius} m of ${point ? 'that point' : 'the view centre'}`;
       state.street.loading = false;
       notify();
       return false;

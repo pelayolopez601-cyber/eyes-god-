@@ -36,8 +36,9 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     // consolidated tool wording (each policy stated once); model-facing tools
     // omit top-level anyOf (OpenAI rejects it). Contacts list routing preserves
     // requested radius and center authority in descriptions only.
-    // Street Level adds its toggle enum values and generated alias hint.
-    '9eb113454c5af5e32e27ffcdc7919d0e4600ba1d204f8f175e071152be41ad0f',
+    // Street Level adds its toggle enum values and generated alias hint, the
+    // "street view" aliases, and show_street_level (fly, map, source, photo).
+    '2a0bc999b9352edafcebf2b0e40c3d61d68147dac44bb247b7a89753b2f66f16',
   );
 });
 
@@ -95,7 +96,10 @@ test('metadata cannot add tools, fields, types or enum values', () => {
 
 test('all legacy action arguments are byte-identical after removing the deliberate additions', () => {
   const legacy = structuredClone(GEV_ACTION_SCHEMAS).filter(
-    (tool) => !['next_satellite_pass', 'set_cyber_sonar'].includes(tool.name),
+    (tool) =>
+      !['next_satellite_pass', 'set_cyber_sonar', 'show_street_level'].includes(
+        tool.name,
+      ),
   );
   // Layer enums are generated from the voice layer manifest and pinned by
   // layerManifest.test.mjs; the two shipped right-rail panels are additive.

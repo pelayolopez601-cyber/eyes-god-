@@ -459,3 +459,80 @@ test('labels are bounded and cleaned before they are spoken', () => {
     'background steps stay on screen',
   );
 });
+
+test('street-level speech names the source and the place, and says which step failed', () => {
+  const ok = envelope('show_street_level', {
+    ok: true,
+    action: 'show_street_level',
+    provider: 'google',
+    providerName: 'Google Street View',
+    label: '10th Street, Sacramento',
+    title: '1000 10th St, Sacramento, CA',
+    capturedAt: Date.UTC(2024, 4, 15),
+  });
+  assert.equal(ok.say, 'Google Street View at 1000 10th St, Sacramento, CA.');
+  assertSpeakable(ok.say);
+  assert.equal(ok.display.title, 'Google Street View');
+  assert.equal(ok.display.lines[1], 'Captured May 2024');
+
+  const stages = {
+    location: "Couldn't find Nowhere.",
+    map: "Couldn't switch the map for Google Street View.",
+    key: 'Google Street View needs its key.',
+    layer: "Couldn't turn on Street Level.",
+    imagery: 'No Google Street View imagery near Nowhere.',
+  };
+  for (const [stage, say] of Object.entries(stages)) {
+    const out = envelope('show_street_level', {
+      ok: false,
+      stage,
+      label: 'Nowhere',
+      providerName: 'Google Street View',
+      error: 'detail',
+    });
+    assert.equal(out.say, say, stage);
+    assertSpeakable(out.say);
+    assert.deepEqual(out.display.lines, ['detail']);
+  }
+  const unfound = envelope('show_street_level', {
+    ok: false,
+    stage: 'location',
+    location: { ok: false, action: 'fly_to_location', label: 'Nowhere Town' },
+  });
+  assert.equal(unfound.say, "Couldn't find Nowhere Town.");
+  assert.equal(unfound.display.title, 'Street Level');
+  const refused = envelope('show_street_level', {
+    ok: false,
+    stage: 'key',
+    keyRejected: true,
+    providerName: 'Google Street View',
+  });
+  assert.equal(refused.say, 'Google Street View refused its key.');
+  assert.equal(
+    envelope('show_street_level', { ok: false, cancelled: true }).say,
+    undefined,
+  );
+  assert.equal(
+    planStepLabel('show_street_level', {
+      query: 'Eiffel Tower',
+      provider: 'google',
+    }),
+    'Street View at Eiffel Tower',
+  );
+  assert.equal(
+    planStepLabel('show_street_level', {
+      query: 'Times Square',
+      provider: 'mapillary',
+    }),
+    'Mapillary at Times Square',
+  );
+  assert.equal(
+    progressStepLabel('imagery', 'Eiffel Tower'),
+    'Opening imagery: Eiffel Tower',
+  );
+  assert.equal(progressLine('map', 'photoreal'), 'Switching to Google 3D.');
+  assert.equal(
+    progressLine('imagery', 'Eiffel Tower'),
+    'Looking for imagery at Eiffel Tower.',
+  );
+});
