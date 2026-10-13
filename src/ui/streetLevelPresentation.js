@@ -1,7 +1,5 @@
-import {
-  keySetupRequirement,
-  keySetupWithAlternatives,
-} from '../keySetupCore.mjs';
+import { keyRequirementText, withKeyAlternatives } from './keyGuidance.js';
+import { formatNumber, msg, t, tn } from '../i18n/index.js';
 
 // Street Level UI state to panel strings and flags. Pure, so it is testable.
 
@@ -9,15 +7,15 @@ const DAY_MS = 86_400_000;
 
 /** SINCE slider stops, in relative days so a share link keeps its meaning. */
 export const SINCE_STOPS = Object.freeze([
-  Object.freeze({ days: 0, label: 'ANY DATE' }),
-  Object.freeze({ days: 3652, label: 'LAST 10 YEARS' }),
-  Object.freeze({ days: 1826, label: 'LAST 5 YEARS' }),
-  Object.freeze({ days: 1095, label: 'LAST 3 YEARS' }),
-  Object.freeze({ days: 730, label: 'LAST 2 YEARS' }),
-  Object.freeze({ days: 365, label: 'LAST YEAR' }),
-  Object.freeze({ days: 182, label: 'LAST 6 MONTHS' }),
-  Object.freeze({ days: 91, label: 'LAST 3 MONTHS' }),
-  Object.freeze({ days: 30, label: 'LAST MONTH' }),
+  Object.freeze({ days: 0, label: msg('ANY DATE') }),
+  Object.freeze({ days: 3652, label: msg('LAST 10 YEARS') }),
+  Object.freeze({ days: 1826, label: msg('LAST 5 YEARS') }),
+  Object.freeze({ days: 1095, label: msg('LAST 3 YEARS') }),
+  Object.freeze({ days: 730, label: msg('LAST 2 YEARS') }),
+  Object.freeze({ days: 365, label: msg('LAST YEAR') }),
+  Object.freeze({ days: 182, label: msg('LAST 6 MONTHS') }),
+  Object.freeze({ days: 91, label: msg('LAST 3 MONTHS') }),
+  Object.freeze({ days: 30, label: msg('LAST MONTH') }),
 ]);
 
 /** The exact stop for a day count, else the nearest one. */
@@ -37,13 +35,19 @@ export function sinceStopIndex(days) {
 function presentSince(days, now) {
   const value = Number(days) || 0;
   const index = sinceStopIndex(value);
-  if (value <= 0) return { index, days: 0, label: 'ANY DATE' };
+  if (value <= 0) return { index, days: 0, label: t('ANY DATE') };
   const stop = SINCE_STOPS[index];
-  const window = stop.days === value ? stop.label : `LAST ${value} DAYS`;
+  const window =
+    stop.days === value
+      ? t(stop.label)
+      : tn(value, 'LAST {count} DAY', 'LAST {count} DAYS');
   return {
     index,
     days: value,
-    label: `${window} · SINCE ${formatDate(now - value * DAY_MS)}`,
+    label: t('{window} · SINCE {date}', {
+      window,
+      date: formatDate(now - value * DAY_MS),
+    }),
   };
 }
 
@@ -64,9 +68,9 @@ function formatDate(ms, precision = 'day') {
 function keyGuidance(state) {
   const needs = (state.providers || [])
     .filter((p) => p.on && p.keyRequired && p.requiresKeyId)
-    .map((p) => keySetupRequirement(p.requiresKeyId))
+    .map((p) => keyRequirementText(p.requiresKeyId))
     .filter(Boolean);
-  return keySetupWithAlternatives(
+  return withKeyAlternatives(
     [...new Set(needs)].join('; '),
     state.keyAlternatives || [],
   );
@@ -74,21 +78,23 @@ function keyGuidance(state) {
 
 function presentStatus(state) {
   const pressed = state.enabled === true;
-  const title = pressed ? 'Turn Street Level off' : 'Turn Street Level on';
+  const title = pressed
+    ? t('Turn Street Level off')
+    : t('Turn Street Level on');
   if (state.keyRejected)
-    return { text: 'KEY REJECTED', tone: 'warn', pressed, title };
+    return { text: t('KEY REJECTED'), tone: 'warn', pressed, title };
   if (state.keyRequired)
     return {
-      text: 'KEY REQUIRED',
+      text: t('KEY REQUIRED'),
       tone: 'warn',
       pressed,
       title: keyGuidance(state) || title,
     };
   if (state.coverage.loading)
-    return { text: 'LOADING', tone: 'busy', pressed, title };
+    return { text: t('LOADING'), tone: 'busy', pressed, title };
   return pressed
-    ? { text: 'ON', tone: 'on', pressed, title }
-    : { text: 'OFF', tone: '', pressed, title };
+    ? { text: t('ON'), tone: 'on', pressed, title }
+    : { text: t('OFF'), tone: '', pressed, title };
 }
 
 /** A chip is lit only while the layer and its provider are both on. */
@@ -97,11 +103,13 @@ function presentProviders(state) {
   return (state.providers || []).map((provider) => {
     const keyRequired = provider.keyRequired === true;
     const on = enabled && provider.on === true;
-    let title = `${provider.name} imagery ${on ? 'on' : 'off'}`;
+    let title = on
+      ? t('{name} imagery on', { name: provider.name })
+      : t('{name} imagery off', { name: provider.name });
     if (provider.keyRejected && provider.error)
       title = `${provider.name}: ${provider.error}`;
     else if (keyRequired && provider.requiresKeyId)
-      title = `${provider.name}: ${keySetupRequirement(provider.requiresKeyId)}`;
+      title = `${provider.name}: ${keyRequirementText(provider.requiresKeyId)}`;
     else if (provider.error) title = `${provider.name}: ${provider.error}`;
     return {
       id: provider.id,
@@ -132,7 +140,7 @@ function presentViewer(state) {
     right.push(formatDate(street.capturedAt, street.capturedAtPrecision));
   const left = [];
   if (street.title) left.push(street.title);
-  if (street.creator) left.push(`Image by ${street.creator}`);
+  if (street.creator) left.push(t('Image by {creator}', { creator: street.creator }));
   return {
     open: street.open === true,
     loading: street.loading === true && !street.imageId,
@@ -147,8 +155,12 @@ function presentViewer(state) {
       disabled: street.open !== true || street.followAvailable !== true,
       title:
         street.followAvailable === true
-          ? 'Camera follows view: move the globe camera wherever the street-level view looks'
-          : 'Camera follow needs the Google 3D map: choose Google 3D under MAP SOURCE',
+          ? t(
+              'Camera follows view: move the globe camera wherever the street-level view looks',
+            )
+          : t(
+              'Camera follow needs the Google 3D map: choose Google 3D under MAP SOURCE',
+            ),
     },
   };
 }
@@ -167,33 +179,46 @@ function presentNearest(state) {
       disabled: true,
       providerIds: [],
     };
-  const names = targets.map((provider) => provider.name).join(' or ');
+  const names = targets.map((provider) => provider.name).join(t(' or '));
   const ready = state.groundClickReady === true;
   return {
     visible: true,
-    label: `OPEN ${targets.map((provider) => provider.label).join(' / ')}`,
+    label: t('OPEN {labels}', {
+      labels: targets.map((provider) => provider.label).join(' / '),
+    }),
     title: ready
-      ? `Open ${names} at the centre of the view`
-      : `Zoom in to a street to open ${names} here`,
+      ? t('Open {names} at the centre of the view', { names })
+      : t('Zoom in to a street to open {names} here', { names }),
     disabled: !ready || state.street.loading === true,
     providerIds: targets.map((provider) => provider.id),
   };
 }
 
 function presentMeta(state) {
-  if (state.providers.length === 0) return state.coverage.hint || '';
-  if (!state.enabled) return 'Switch a provider on to draw its coverage.';
+  if (state.providers.length === 0)
+    return state.coverage.hint ? t(state.coverage.hint) : '';
+  if (!state.enabled) return t('Switch a provider on to draw its coverage.');
   // Key-gated with another source ready: say how to use it.
   if (state.keyRequired && state.keyAlternatives?.length)
     return keyGuidance(state);
   if (state.sequence.selectedId)
     return state.sequence.loading
-      ? 'Loading this sequence…'
-      : `${state.sequence.images.toLocaleString()} images in this sequence · Esc clears`;
-  const hint = state.coverage.hint || '';
+      ? t('Loading this sequence…')
+      : tn(
+          state.sequence.images,
+          '{n} image in this sequence · Esc clears',
+          '{n} images in this sequence · Esc clears',
+          { n: formatNumber(state.sequence.images) },
+        );
+  const hint = state.coverage.hint ? t(state.coverage.hint) : '';
   if (state.coverage.count > 0)
     return [
-      `${state.coverage.count.toLocaleString()} sequences in view · click a line for its photos`,
+      tn(
+        state.coverage.count,
+        '{n} sequence in view · click a line for its photos',
+        '{n} sequences in view · click a line for its photos',
+        { n: formatNumber(state.coverage.count) },
+      ),
       hint,
     ]
       .filter(Boolean)

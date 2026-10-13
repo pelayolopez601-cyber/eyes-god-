@@ -33,6 +33,7 @@ import {
   SEQUENCE_VIEW_RANGE_PER_HEIGHT,
 } from './policy.js';
 
+import { msg } from '../../../../i18n/index.js';
 /** Draped lines stay at most this long while a tile's cast lines build. */
 export const SWAP_MAX_WAIT_MS = 4000;
 /** Tiles touched by new mesh samples are redrawn at most this often. */
@@ -694,8 +695,9 @@ export function createCoverage({ state, source }) {
     if (kind === 'overview' && (!bbox || zoom <= 1))
       bbox = [-180, -85, 180, 85];
     if (zoom == null || !bbox) {
-      state.coverage.hint =
-        'Point the camera at the globe for street-level coverage';
+      state.coverage.hint = msg(
+        'Point the camera at the globe for street-level coverage',
+      );
       clear();
       notify();
       return;

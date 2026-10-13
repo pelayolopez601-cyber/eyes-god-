@@ -20,12 +20,24 @@ import {
  * the chip and the dialog are removed outright.
  */
 
-/** Chip label — pure, exported for tests. */
+import { t, msg, tn } from './i18n/index.js';
+
+/**
+ * Chip label — pure, exported for tests. The exact English values are pinned
+ * by keySetup.test.mjs; t() resolves them from the catalog, so the default
+ * locale renders byte-identical text and 'es' localizes at the same site.
+ * @param {{total?: number, setCount?: number}|null} status
+ * @returns {string}
+ */
 export function keySetupChipLabel(status) {
   const missing = Math.max(0, (status?.total || 0) - (status?.setCount || 0));
   return missing > 0
-    ? `POWER UP · ${missing} ${missing === 1 ? 'KEY' : 'KEYS'} WAITING`
-    : 'POWERED UP';
+    ? tn(
+        missing,
+        'POWER UP · {count} KEY WAITING',
+        'POWER UP · {count} KEYS WAITING',
+      )
+    : t('POWERED UP');
 }
 
 /**
@@ -178,7 +190,7 @@ function buildRow(documentRef, key) {
 
   const unlocks = documentRef.createElement('p');
   unlocks.className = 'key-setup-unlocks';
-  unlocks.textContent = key.unlocks;
+  unlocks.textContent = t(key.unlocks);
 
   row.append(head, unlocks);
   if (!external) {
@@ -203,8 +215,10 @@ function buildRow(documentRef, key) {
       remove.type = 'button';
       remove.className = 'key-setup-remove';
       remove.dataset.keySetupRemove = JSON.stringify(key.envVars);
-      remove.textContent = 'REMOVE';
-      remove.title = `Remove ${key.title} from this app's saved keys`;
+      remove.textContent = t('REMOVE');
+      remove.title = t("Remove {title} from this app's saved keys", {
+        title: key.title,
+      });
       fields.append(remove);
     }
     row.append(fields);
@@ -369,17 +383,19 @@ export async function initKeySetup({
 
   const storeLabel = () =>
     status?.store === 'pinokio-environment'
-      ? 'your app configuration'
-      : 'your local .env';
+      ? t('your app configuration')
+      : t('your local .env');
 
-  const submitUpdates = async (updates, doneVerb) => {
+  // doneMessageKey names the whole saved/removed sentence; the storage
+  // destination is interpolated so the {store} phrase stays one spelling.
+  const submitUpdates = async (updates, doneMessageKey) => {
     if (disposed || busy) return;
     const googleWasUnset = !status?.keys?.find(
       (key) => key.id === 'google-maps',
     )?.set;
     busy = true;
     applyButton?.setAttribute('aria-disabled', 'true');
-    say('Saving…');
+    say(t('Saving…'));
     try {
       const response = await doFetch('/api/setup/keys', {
         method: 'POST',
@@ -390,7 +406,11 @@ export async function initKeySetup({
       const payload = await response.json().catch(() => ({}));
       if (disposed) return;
       if (!response.ok || !payload.ok) {
-        say(payload.error || `Save failed (${response.status}).`);
+        // payload.error is a server-authored message (API value) — shown as-is.
+        say(
+          payload.error ||
+            t('Save failed ({status}).', { status: response.status }),
+        );
         return;
       }
       for (const input of root.querySelectorAll('input[data-env-var]'))
@@ -420,11 +440,13 @@ export async function initKeySetup({
           signal: lifetime.signal,
         });
       }
-      say(
-        `${doneVerb} ${storeLabel()}. Restarting — this page reloads itself.`,
-      );
+      say(t(doneMessageKey, { store: storeLabel() }));
     } catch (error) {
-      say(`Save failed: ${error?.message || error}`);
+      say(
+        t('Save failed: {detail}', {
+          detail: error?.message || error,
+        }),
+      );
     } finally {
       busy = false;
       applyButton?.setAttribute('aria-disabled', 'false');
@@ -441,10 +463,13 @@ export async function initKeySetup({
       })),
     );
     if (!Object.keys(updates).length) {
-      say('Paste at least one key first.');
+      say(t('Paste at least one key first.'));
       return;
     }
-    await submitUpdates(updates, 'Saved to');
+    await submitUpdates(
+      updates,
+      msg('Saved to {store}. Restarting — this page reloads itself.'),
+    );
   };
 
   chip.addEventListener('click', openDialog);
@@ -560,11 +585,11 @@ export async function initKeySetup({
     // a deliberate two-step the lure cannot pre-satisfy.
     const ok =
       typeof globalThis.confirm !== 'function' ||
-      globalThis.confirm('Remove this key from your saved configuration?');
+      globalThis.confirm(t('Remove this key from your saved configuration?'));
     if (!ok) return;
     void submitUpdates(
       Object.fromEntries(envVars.map((name) => [name, null])),
-      'Removed from',
+      msg('Removed from {store}. Restarting — this page reloads itself.'),
     );
   });
 

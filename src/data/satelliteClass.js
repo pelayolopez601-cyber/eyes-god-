@@ -17,6 +17,8 @@
  * for), then the constellations users can actually name, then the grab-bag.
  */
 
+import { t, msg } from '../i18n/index.js';
+
 /**
  * Class registry. `label` is the card/legend token, `color` the point color,
  * `blurb` the plain-language gloss for the legend tooltip.
@@ -76,6 +78,34 @@ export const SATELLITE_CLASS_ORDER = Object.freeze([
   'visual',
   'comms',
 ]);
+
+// Display keys for the class table above: `label`/`blurb` stay the English
+// source-of-truth tokens (tests read them), while the card and legend accessors
+// translate through these keys at the presentation boundary.
+const CLASS_DISPLAY_KEYS = Object.freeze({
+  station: Object.freeze({
+    label: msg('STATION'),
+    blurb: msg('Crewed stations and their visiting vehicles'),
+  }),
+  nav: Object.freeze({
+    label: msg('NAV'),
+    blurb: msg('GNSS navigation — GPS, GLONASS, Galileo'),
+  }),
+  geo: Object.freeze({
+    label: msg('GEO'),
+    blurb: msg(
+      'Geostationary belt — comms and weather, fixed over the equator',
+    ),
+  }),
+  visual: Object.freeze({
+    label: msg('VISUAL'),
+    blurb: msg('Brightest naked-eye objects — CelesTrak visual group'),
+  }),
+  comms: Object.freeze({
+    label: msg('COMMS'),
+    blurb: msg('Broadband constellation shell — shown only in DENSE mode'),
+  }),
+});
 
 /**
  * CelesTrak group tag → { class, subtype }. Subtype names the specific
@@ -139,7 +169,7 @@ export function satelliteClassColor(group) {
  */
 export function satelliteClassLabel(group, { isIss = false } = {}) {
   const { klass, subtype } = satelliteClassOf(group, { isIss });
-  const base = SATELLITE_CLASSES[klass].label;
+  const base = t(CLASS_DISPLAY_KEYS[klass].label);
   return subtype ? `${base} · ${subtype}` : base;
 }
 
@@ -180,11 +210,12 @@ export function satelliteClassLegend(counts) {
     const count = counts?.[klass];
     if (!(count > 0)) continue;
     const spec = SATELLITE_CLASSES[klass];
+    const display = CLASS_DISPLAY_KEYS[klass];
     result.push({
       klass,
-      label: spec.label,
+      label: t(display.label),
       color: spec.color,
-      blurb: spec.blurb,
+      blurb: t(display.blurb),
       count,
     });
   }

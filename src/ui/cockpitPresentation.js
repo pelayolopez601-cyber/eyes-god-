@@ -1,4 +1,6 @@
 /** Pure formatting and fixed presentation constants used by Cockpit components. */
+import { t, msg } from '../i18n/index.js';
+
 export const COCKPIT_HEADING_SLEW_DPS = 28;
 
 export const COCKPIT_FORWARD_OFFSET_M = 7;
@@ -44,20 +46,22 @@ export const COCKPIT_REGIONAL_REFRESH_DISTANCE_M = 25_000;
 export const COCKPIT_BRIEF_PAGES = [
   {
     id: 'signals',
-    kicker: 'LIVE SIGNALS',
-    subtitle: 'OBSERVED / MAPPED PINGS',
-    source: 'SOURCE-BACKED EVENTS · NO SYNTHETIC NEWS',
+    kickerKey: msg('LIVE SIGNALS'),
+    subtitleKey: msg('OBSERVED / MAPPED PINGS'),
+    sourceKey: msg('SOURCE-BACKED EVENTS · NO SYNTHETIC NEWS'),
   },
   {
     id: 'news',
-    kicker: 'REGIONAL NEWS',
-    subtitle: 'LATEST LOCATION-MATCHED REPORTING',
+    kickerKey: msg('REGIONAL NEWS'),
+    subtitleKey: msg('LATEST LOCATION-MATCHED REPORTING'),
+    // RSS provider attribution is a keep-English boundary string.
     source: 'GOOGLE NEWS RSS · LOCATION QUERY · RECENT',
   },
   {
     id: 'local',
-    kicker: 'LOCAL INFO',
-    subtitle: 'PLACE / CONDITIONS / POSITION',
+    kickerKey: msg('LOCAL INFO'),
+    subtitleKey: msg('PLACE / CONDITIONS / POSITION'),
+    // Data-source attribution is a keep-English boundary string.
     source: 'NATURAL EARTH · OPEN-METEO · UTC',
   },
 ];
@@ -80,15 +84,17 @@ export function isRenderedOnScreen(element) {
 
 export function formatCockpitBriefAge(value) {
   const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) return 'TIME UNKNOWN';
+  if (!Number.isFinite(timestamp)) return t('TIME UNKNOWN');
   const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
-  if (minutes < 60) return `${minutes}M AGO`;
+  if (minutes < 60) return t('{count}M AGO', { count: minutes });
   const hours = Math.round(minutes / 60);
-  return hours < 48 ? `${hours}H AGO` : `${Math.round(hours / 24)}D AGO`;
+  return hours < 48
+    ? t('{count}H AGO', { count: hours })
+    : t('{count}D AGO', { count: Math.round(hours / 24) });
 }
 
 export function formatCockpitWindDirection(value) {
-  if (!Number.isFinite(value)) return 'DIR UNKNOWN';
+  if (!Number.isFinite(value)) return t('DIR UNKNOWN');
   const labels = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   const normalized = ((value % 360) + 360) % 360;
   return `${labels[Math.round(normalized / 45) % labels.length]} · ${Math.round(normalized)}°`;

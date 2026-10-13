@@ -1,5 +1,6 @@
 import { COLORS } from './policy.js';
 
+import { msg, t } from '../../i18n/index.js';
 /**
  * @typedef {object} ProviderSnapshot
  * @property {string} id
@@ -31,7 +32,7 @@ export function summarizeCoverage(providers) {
     loading: active.some((p) => p.loading),
     hint:
       providers.length === 0
-        ? 'No street-level imagery providers configured'
+        ? msg('No street-level imagery providers configured')
         : [...new Set(active.map((p) => p.hint).filter(Boolean))].join(' · '),
     error: active.find((p) => p.error)?.error || null,
     keyRequired:
@@ -93,7 +94,7 @@ export function composeUIState({
       color: provider.color,
     }));
   if (legend.length)
-    legend.push({ key: 'selected', label: 'Selected', color: COLORS.selected });
+    legend.push({ key: 'selected', label: t('Selected'), color: COLORS.selected });
   return {
     enabled,
     groundClickReady: groundClickReady === true,

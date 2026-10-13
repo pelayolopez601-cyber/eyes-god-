@@ -3,11 +3,48 @@ import { syncRowList } from './rowList.js';
 import { layerFeedState } from '../data/feedState.js';
 export { layerFeedState } from '../data/feedState.js';
 import { GUIDANCE_STATUSES } from '../loadingFeedback.js';
-import {
-  keySetupRequirement,
-  keySetupWithAlternatives,
-} from '../keySetupCore.mjs';
+import { keyRequirementText, withKeyAlternatives } from './keyGuidance.js';
 import { createWeatherPanel } from './weatherPanel.js';
+import { t, msg } from '../i18n/index.js';
+
+// Feed-state enum VALUES are machine identifiers (layerFeedState contract, QA
+// hooks, CSS feed-* classes); only the final label value translates, at this
+// presentation boundary. See docs/TRANSLATORS.md keep-English boundary.
+const FEED_STATE_LABEL_KEYS = Object.freeze({
+  nominal: msg('ON'),
+  loading: msg('LOADING'),
+  degraded: msg('DEGRADED'),
+  stale: msg('STALE'),
+  partial: msg('PARTIAL'),
+  fallback: msg('FALLBACK'),
+  unavailable: msg('UNAVAILABLE'),
+});
+
+// Layer display names, localized at the same presentation boundary. Registry
+// ids stay English; a layer without an entry here renders its module name,
+// falling back to the English panel override when one exists.
+const LAYER_NAME_KEYS = Object.freeze({
+  flights: msg('Live Flights'),
+  military: msg('Military Flights'),
+  earthquakes: msg('Earthquakes (24h)'),
+  satellites: msg('Satellites'),
+  'rocket-launches': msg('Space Missions (30d)'),
+  traffic: msg('Street Traffic'),
+  cctv: msg('CCTV'),
+  radio: msg('Radio'),
+  bikeshare: msg('Bikeshare'),
+  'ais-live-vessels': msg('Live AIS Vessels'),
+  'military-installations': msg('Mapped Installations'),
+  'military-awareness': msg('Global Context'),
+  'local-datacenters': msg('Datacenters'),
+  'local-dams': msg('Dams'),
+  'telegeography-submarine-cables': msg('Submarine Cables'),
+  'local-firms': msg('FIRMS Active Fires'),
+});
+
+function lifecycleStateLabel(lifecycleState) {
+  return t(lifecycleState === 'enabling' ? msg('ENABLING') : msg('DISABLING'));
+}
 const FEED_STATE_LABELS = Object.freeze({
   nominal: 'ON',
   loading: 'LOADING',
@@ -73,17 +110,19 @@ const PANEL_POSITIONS = new Map(
   PANEL_ORDER.map(({ id }, index) => [id, index]),
 );
 const PANEL_LABELS = {
-  'ais-live-vessels': 'Live Vessels',
-  bikeshare: 'Bike Share',
-  cctv: 'Cameras',
-  'street-level': 'Street Level',
-  'alpr-cameras': 'Mapped ALPR Cameras',
-  'local-datacenters': 'Data Centers',
-  'local-firms': 'Active Fires',
+  'ais-live-vessels': msg('Live Vessels'),
+  bikeshare: msg('Bike Share'),
+  cctv: msg('Cameras'),
+  'street-level': msg('Street Level'),
+  'alpr-cameras': msg('Mapped ALPR Cameras'),
+  'local-datacenters': msg('Data Centers'),
+  'local-firms': msg('Active Fires'),
 };
 
 function panelLabel(layer) {
-  return PANEL_LABELS[layer.id] || layer.name;
+  const key = LAYER_NAME_KEYS[layer.id];
+  if (key) return t(key);
+  return PANEL_LABELS[layer.id] ? t(PANEL_LABELS[layer.id]) : layer.name;
 }
 
 /**
@@ -104,8 +143,8 @@ export function layerKeyRequirementTooltip(layer = {}) {
   if (layer?.stats?.keyRequired !== true) return '';
   const requiresKeyId = String(layer.requiresKeyId || '').trim();
   // A layer with several sources also names the ones it could use instead.
-  return keySetupWithAlternatives(
-    requiresKeyId ? keySetupRequirement(requiresKeyId) : '',
+  return withKeyAlternatives(
+    requiresKeyId ? keyRequirementText(requiresKeyId) : '',
     layer.stats.keyAlternatives || [],
   );
 }
@@ -528,23 +567,38 @@ export class LayerPanel {
   _buildMetaText(layer) {
     const stats = layer.stats || {};
     const feedState = layerFeedState(stats);
-    const stateLabel = FEED_STATE_LABELS[feedState];
+    const stateLabel = t(FEED_STATE_LABEL_KEYS[feedState]);
     const source = stats.source || layer.source;
     const lifecycleState =
       layer.lifecycleState || (layer.enabled ? 'enabled' : 'disabled');
     if (lifecycleState === 'enabling' || lifecycleState === 'disabling') {
-      return `${lifecycleState.toUpperCase()} · ${source}`;
+      return t('{state} · {source}', {
+        state: lifecycleStateLabel(lifecycleState),
+        source,
+      });
     }
     if (layer.lifecycleUncertain) {
-      return `UNCERTAIN · ${source} · lifecycle state requires reconciliation`;
+      return t(
+        'UNCERTAIN · {source} · lifecycle state requires reconciliation',
+        { source },
+      );
     }
     const presentedError =
       stats.error || stats.lastError || stats.managerRefreshError;
     if (presentedError) {
       if (typeof stats.retryInSec === 'number' && stats.retryInSec > 0) {
-        return `${stateLabel} · ${source} · ${presentedError} · retry ${stats.retryInSec}s`;
+        return t('{state} · {source} · {detail} · retry {seconds}s', {
+          state: stateLabel,
+          source,
+          detail: presentedError,
+          seconds: stats.retryInSec,
+        });
       }
-      return `${stateLabel} · ${source} · ${presentedError}`;
+      return t('{state} · {source} · {detail}', {
+        state: stateLabel,
+        source,
+        detail: presentedError,
+      });
     }
     // A guidance status carries its prompt in `statusMessage`, not `error`, so
     // the row still tells the operator what to do without reporting a fault.
@@ -555,20 +609,24 @@ export class LayerPanel {
     ) {
       return `${source} · ${stats.statusMessage.trim()}`;
     }
-    const ago = stats.lastUpdate ? this._timeAgo(stats.lastUpdate) : 'never';
+    const ago = stats.lastUpdate ? this._timeAgo(stats.lastUpdate) : t('never');
     if (stats.loading) {
       const loadingLabel =
         typeof stats.loadingLabel === 'string' && stats.loadingLabel.trim()
           ? stats.loadingLabel.trim()
-          : 'loading...';
-      return `${source} · ${loadingLabel}`;
+          : t('loading...');
+      return t('{source} · {loadingLabel}', { source, loadingLabel });
     }
     if (feedState === 'fallback') {
       const detail =
         typeof stats.loadingLabel === 'string' && stats.loadingLabel.trim()
           ? stats.loadingLabel.trim()
           : stats.coverage || ago;
-      return `${stateLabel} · ${source} · ${detail}`;
+      return t('{state} · {source} · {detail}', {
+        state: stateLabel,
+        source,
+        detail,
+      });
     }
     if (feedState === 'partial') {
       const { acceptedRowCount, rawRowCount } = stats;
@@ -577,21 +635,40 @@ export class LayerPanel {
         Number.isInteger(rawRowCount) &&
         acceptedRowCount >= 0 &&
         rawRowCount > acceptedRowCount
-          ? `${acceptedRowCount} of ${rawRowCount} records accepted`
-          : 'incomplete snapshot';
-      return `${stateLabel} · ${source} · ${detail} · ${ago}`;
+          ? t('{accepted} of {raw} records accepted', {
+              accepted: acceptedRowCount,
+              raw: rawRowCount,
+            })
+          : t('incomplete snapshot');
+      return t('{state} · {source} · {detail} · {ago}', {
+        state: stateLabel,
+        source,
+        detail,
+        ago,
+      });
     }
     if (feedState === 'stale') {
-      const retry =
-        typeof stats.retryInSec === 'number' && stats.retryInSec > 0
-          ? ` · retrying in ${stats.retryInSec}s`
-          : '';
-      return `${stateLabel} · ${source} · ${ago}${retry}`;
+      if (typeof stats.retryInSec === 'number' && stats.retryInSec > 0) {
+        return t('{state} · {source} · {ago} · retrying in {seconds}s', {
+          state: stateLabel,
+          source,
+          ago,
+          seconds: stats.retryInSec,
+        });
+      }
+      return t('{state} · {source} · {ago}', {
+        state: stateLabel,
+        source,
+        ago,
+      });
     }
     if (typeof stats.loadingLabel === 'string' && stats.loadingLabel.trim()) {
-      return `${source} · ${stats.loadingLabel.trim()}`;
+      return t('{source} · {loadingLabel}', {
+        source,
+        loadingLabel: stats.loadingLabel.trim(),
+      });
     }
-    return `${source} · ${ago}`;
+    return t('{source} · {ago}', { source, ago });
   }
 
   _syncToggleButton(button, layer) {
@@ -631,24 +708,26 @@ export class LayerPanel {
     );
     button.setAttribute('aria-busy', String(transitioning));
     button.textContent = transitioning
-      ? layer.lifecycleState.toUpperCase()
+      ? lifecycleStateLabel(layer.lifecycleState)
       : uncertain
-        ? 'UNCERTAIN'
+        ? t('UNCERTAIN')
         : layer.enabled || unavailable
-          ? FEED_STATE_LABELS[feedState]
-          : 'OFF';
+          ? t(FEED_STATE_LABEL_KEYS[feedState])
+          : t('OFF');
     const keyGuidance = unavailable
-      ? String(layer.stats.error || 'Data source unavailable')
+      ? String(layer.stats.error || t('Data source unavailable'))
       : layerKeyRequirementTooltip(layer);
     // Name the missing key on the control itself: a row reading KEY REQUIRED
     // without saying WHICH key leaves a dead control and no next step. Empty
     // when the layer needs no key, or already has one.
     button.title = keyGuidance;
+    const ariaLabel = t('{name}: {state}', {
+      name: panelLabel(layer),
+      state: button.textContent,
+    });
     button.setAttribute(
       'aria-label',
-      keyGuidance
-        ? `${panelLabel(layer)}: ${button.textContent}. ${keyGuidance}`
-        : `${panelLabel(layer)}: ${button.textContent}`,
+      keyGuidance ? `${ariaLabel}. ${keyGuidance}` : ariaLabel,
     );
   }
 
@@ -659,9 +738,9 @@ export class LayerPanel {
 
   _timeAgo(timestamp) {
     const diff = Math.floor((Date.now() - timestamp) / 1000);
-    if (diff < 5) return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 5) return t('just now');
+    if (diff < 60) return t('{count}s ago', { count: diff });
+    if (diff < 3600) return t('{count}m ago', { count: Math.floor(diff / 60) });
+    return t('{count}h ago', { count: Math.floor(diff / 3600) });
   }
 }

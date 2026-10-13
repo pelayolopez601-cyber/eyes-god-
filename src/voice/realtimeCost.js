@@ -1,3 +1,4 @@
+import { t } from '../i18n/index.js';
 import {
   readStoredVoiceTier,
   readStoredVoiceLimits,
@@ -56,10 +57,17 @@ export class RealtimeCost {
       const pendingId = resolveVoiceModel(pendingTier).id;
       this.ui.tierButton.title =
         this.isActive() && state.modelId !== pendingId
-          ? `Next session: ${pendingId} — this session stays on ${state.modelId}`
-          : `Voice model: ${pendingId} — click to switch to ${
-              isMini ? 'standard' : 'mini'
-            }; applies next session`;
+          ? t('Next session: {pendingId} — this session stays on {modelId}', {
+              pendingId,
+              modelId: state.modelId,
+            })
+          : t(
+              'Voice model: {pendingId} — click to switch to {target}; applies next session',
+              {
+                pendingId,
+                target: isMini ? 'standard' : 'mini',
+              },
+            );
     }
     if (this.ui?.costValue) {
       const liveAuth = this.sessionCloudVoiceAuth || this.cloudVoiceAuth;
@@ -80,9 +88,15 @@ export class RealtimeCost {
       this.ui.costValue.textContent = state.display;
       this.ui.costValue.dataset.level = state.level;
       this.ui.costValue.title =
-        `Estimated session cost on ${state.modelId} — ${state.responses} response(s). ` +
-        `Warns at ${formatCostUsd(state.warnUsd)}, ends the session at ${formatCostUsd(state.capUsd)}.` +
-        (state.note ? ` ${state.note}` : '');
+        t(
+          'Estimated session cost on {modelId} — {responses} response(s). Warns at {warn}, ends the session at {cap}.',
+          {
+            modelId: state.modelId,
+            responses: state.responses,
+            warn: formatCostUsd(state.warnUsd),
+            cap: formatCostUsd(state.capUsd),
+          },
+        ) + (state.note ? ` ${state.note}` : '');
     }
   }
 
@@ -125,7 +139,9 @@ export class RealtimeCost {
     if (this.isActive() && this.ui?.detail) {
       this.setStatus(
         this.status,
-        `${this.voiceTier.toUpperCase()} applies next session`,
+        t('{tier} applies next session', {
+          tier: this.voiceTier.toUpperCase(),
+        }),
       );
     }
     return this.voiceTier;
@@ -240,7 +256,10 @@ export class RealtimeCost {
     try {
       this.stop({ preserveStatus: true });
     } finally {
-      this.setStatus('idle', `Session ended — cost cap ${state.display}`);
+      this.setStatus(
+        'idle',
+        t('Session ended — cost cap {cost}', { cost: state.display }),
+      );
       this.syncCostUi();
     }
   }

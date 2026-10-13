@@ -26,6 +26,7 @@ import {
   getSceneAppendRecipeById,
 } from './recipes.js';
 import { sceneLayerPlan, sceneRequiresContextModeExit } from './scenePolicy.js';
+import { t, msg } from '../i18n/index.js';
 import { createSceneDataPacks } from './dataPacks/controller.js';
 import { createSceneInteractions } from './interactions.js';
 import { createSceneSharing } from './sharing.js';
@@ -60,6 +61,31 @@ import {
   stringifySceneDocument,
   SceneDocumentError,
 } from '../director/document.js';
+
+// Built-in recipe DISPLAY names. Recipe ids, the URL 'scene' param, stored
+// project titles, and voice-matching titles all stay English (keep-English
+// boundary + persisted data); only the presentation of an UNRENAMED built-in
+// localizes, so an operator's renamed scene is never masked by the catalog.
+const RECIPE_TITLE_KEYS = Object.freeze({
+  'flights-radar': msg('Global Flights Radar'),
+  'orbital-watch': msg('Orbital Watch'),
+  'thermal-threats': msg('Thermal Threat Board'),
+  'city-overload': msg('City Overload'),
+  'omniscience-pullback': msg('Omniscience Pullback'),
+});
+
+/**
+ * Display title for a scene: the localized recipe name while the stored title
+ * still matches the built-in verbatim, the stored title otherwise.
+ * @param {{id?: string, title?: string}} scene
+ * @returns {string}
+ */
+function displaySceneTitle(scene) {
+  const key = RECIPE_TITLE_KEYS[scene?.id];
+  if (!key) return scene?.title || '';
+  const builtin = SCENE_RECIPES.find((recipe) => recipe.id === scene.id);
+  return scene.title === builtin?.title ? t(key) : scene.title;
+}
 
 /** @constant {string} localStorage key for the serialized project */
 const STORAGE_KEY = 'godsEyeView.sceneProject.v2';
@@ -172,7 +198,7 @@ export class SceneDirector {
     this._presentation = {
       status: this._storageReadError
         ? 'Saved project could not be read; storage preserved. Import a valid file to resume saving.'
-        : 'Ready',
+        : t('Ready'),
       progress: 0,
       runtime: '',
       playbackActive: false,
@@ -370,7 +396,10 @@ export class SceneDirector {
 
   _shotOutcome(type, scene, shot, index = scene.shots.indexOf(shot)) {
     if (type === 'shot-loaded')
-      this._presentation.status = `Loaded: ${scene.title} / ${shot.title}`;
+      this._presentation.status = t('Loaded: {scene} / {shot}', {
+        scene: scene.title,
+        shot: shot.title,
+      });
     this._publish({
       type,
       sceneId: scene.id,
@@ -389,7 +418,12 @@ export class SceneDirector {
     this._controls = new SceneControls({
       subscribe: (listener) => this.subscribe(listener),
       read: () => ({
-        scenes: this._project.scenes,
+        // Scene titles surface in the panel through SceneControls; built-in
+        // recipe titles display their localized name until renamed by the user.
+        scenes: this._project.scenes.map((scene) => ({
+          ...scene,
+          title: displaySceneTitle(scene),
+        })),
         selectedSceneId: this._selectedSceneId,
         selectedShotId: this._selectedShotId,
         running: this._running,
@@ -920,14 +954,16 @@ export class SceneDirector {
 
     const camera = this.styleManager.getCameraState();
     if (!camera) {
-      this._updateStatus('Cannot capture shot: camera not ready');
+      this._updateStatus(t('Cannot capture shot: camera not ready'));
       return;
     }
 
     const shot = normalizeShot(
       {
         id: uid('shot'),
-        title: `Shot ${scene.shots.length + 1}`,
+        title: t('Shot {n}', {
+          n: scene.shots.length + 1,
+        }),
         durationSec: DEFAULT_SHOT_DURATION_SEC,
         holdSec: DEFAULT_HOLD_SEC,
         camera,
@@ -941,7 +977,12 @@ export class SceneDirector {
     this._selectedShotId = shot.id;
     this._saveProject();
     this._shotOutcome('shot-captured', scene, shot);
-    this._updateStatus(`Captured: ${scene.title} / ${shot.title}`);
+    this._updateStatus(
+      t('Captured: {scene} / {shot}', {
+        scene: scene.title,
+        shot: shot.title,
+      }),
+    );
   }
 
   /**
@@ -954,7 +995,7 @@ export class SceneDirector {
 
     const shot = scene.shots.find((item) => item.id === this._selectedShotId);
     if (!shot) {
-      this._updateStatus('Select a shot first');
+      this._updateStatus(t('Select a shot first'));
       return;
     }
 
@@ -969,7 +1010,12 @@ export class SceneDirector {
 
     this._saveProject();
     this._shotOutcome('shot-updated', scene, shot);
-    this._updateStatus(`Updated: ${scene.title} / ${shot.title}`);
+    this._updateStatus(
+      t('Updated: {scene} / {shot}', {
+        scene: scene.title,
+        shot: shot.title,
+      }),
+    );
   }
 
   /**
@@ -1564,7 +1610,7 @@ export class SceneDirector {
       this._claimingCamera = false;
     }
     if (claimed === false) {
-      this._updateStatus('Camera unavailable — exit cockpit first');
+      this._updateStatus(t('Camera unavailable — exit cockpit first'));
       return false;
     }
     return true;
@@ -1699,7 +1745,7 @@ export class SceneDirector {
       if (!queue.length) return { started: false, reason: 'scene-complete' };
     }
     if (!queue.length) {
-      this._updateStatus('No shots to run');
+      this._updateStatus(t('No shots to run'));
       return { started: false, reason: 'no-shots' };
     }
 
@@ -1782,7 +1828,11 @@ export class SceneDirector {
         releaseOnFinish: preview,
       });
     } catch (error) {
-      this._updateStatus(`Error: ${error.message || 'run failed'}`);
+      this._updateStatus(
+        t('Error: {message}', {
+          message: error.message || 'run failed',
+        }),
+      );
       this._logEvent('scene_run_error', {
         message: error.message || 'unknown error',
       });
@@ -1956,7 +2006,7 @@ export class SceneDirector {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    this._presentation.status = 'Project exported';
+    this._presentation.status = t('Project exported');
     this._publish({ type: 'project-exported', project: this._project });
   }
 
@@ -2219,7 +2269,7 @@ export class SceneDirector {
         result.error || 'unknown reason',
       );
       this._updateStatus(
-        `Could not exit ${mode} — scene layers may be refused`,
+        t('Could not exit {mode} — scene layers may be refused', { mode }),
       );
       this._logEvent('context_mode_exit_failed', {
         mode,

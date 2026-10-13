@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { t } from '../../i18n/index.js';
 import {
   satelliteShortName,
   fireDetectionKey,
@@ -329,14 +330,18 @@ export function createModel({
    */
 
   function buildSelectedFireCard(fire, nowMs) {
-    const meta = [`${confidenceBucket(fire.confidence)} conf`];
+    const meta = [
+      t('{value} conf', {
+        value: confidenceBucket(fire.confidence),
+      }),
+    ];
     if (fire.acqMs > 0) {
       const age = formatAge(nowMs - fire.acqMs);
-      if (age) meta.push(`${age} ago`);
+      if (age) meta.push(t('{value} ago', { value: age }));
     }
     const sat = satelliteShortName(fire.satellite);
     meta.push(
-      sat ? `${fire.sensor || 'VIIRS'} ${sat}` : fire.sensor || 'sensor n/a',
+      sat ? `${fire.sensor || 'VIIRS'} ${sat}` : fire.sensor || t('sensor n/a'),
     );
     return {
       id: `selected-fire:${fireDetectionKey(fire)}`,
@@ -346,10 +351,11 @@ export function createModel({
       cullPosition: fireCullPosition(fire),
       gapPx: frpPixelSize(fire.frp),
       accent: accentForSeverity(detectionColorStop(fire).name),
-      title: `FIRE · ${formatFrp(fire.frp)} MW`,
+      title: t('FIRE · {frp} MW', { frp: formatFrp(fire.frp) }),
       details: [
         meta.join(' · '),
-        formatLatLon(fire.lat, fire.lon) + (fire.night ? ' · NIGHT' : ''),
+        formatLatLon(fire.lat, fire.lon) +
+          (fire.night ? ` · ${t('NIGHT')}` : ''),
       ],
       selected: true,
       priority: Number.MAX_SAFE_INTEGER,
@@ -382,7 +388,7 @@ export function createModel({
       cullPosition: candidate.cullPosition || candidate.position,
       gapPx: frpPixelSize(fire.frp),
       accent: accentForSeverity(detectionColorStop(fire).name),
-      title: `▲ ${formatFrp(fire.frp)} MW`,
+      title: t('▲ {frp} MW', { frp: formatFrp(fire.frp) }),
       details: [meta.join(' · ')],
       selected: false,
       priority: Number(fire.frp) || 0,
@@ -400,11 +406,11 @@ export function createModel({
 
   function buildCellCard(candidate, nowMs) {
     const cell = candidate.cell;
-    const noun = cell.count === 1 ? 'FIRE' : 'FIRES';
-    const parts = [`max ${formatFrp(cell.maxFrp)} MW`];
+    const noun = cell.count === 1 ? t('FIRE') : t('FIRES');
+    const parts = [t('max {value} MW', { value: formatFrp(cell.maxFrp) })];
     if (cell.newestAcqMs > 0) {
       const age = formatAge(nowMs - cell.newestAcqMs);
-      if (age) parts.push(`new ${age}`);
+      if (age) parts.push(t('new {value}', { value: age }));
     }
     return {
       id: `cell:${cell.latCell ?? 'x'}:${cell.lonCell ?? 'x'}`,
@@ -490,11 +496,11 @@ export function createModel({
   /** Millisecond delta → "<1m ago" / "Xm ago" / "Xh ago" (fresh-feed readout). */
 
   function formatAgoMinutes(deltaMs) {
-    if (!Number.isFinite(deltaMs) || deltaMs < 0) return 'just now';
+    if (!Number.isFinite(deltaMs) || deltaMs < 0) return t('just now');
     const minutes = Math.floor(deltaMs / 60000);
-    if (minutes < 1) return '<1m ago';
-    if (minutes < 90) return `${minutes}m ago`;
-    return `${Math.round(minutes / 60)}h ago`;
+    if (minutes < 1) return t('<1m ago');
+    if (minutes < 90) return t('{count}m ago', { count: minutes });
+    return t('{count}h ago', { count: Math.round(minutes / 60) });
   }
 
   /** Normalized 0..1 confidence → low/nominal/high display bucket. */

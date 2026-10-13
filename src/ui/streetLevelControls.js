@@ -5,6 +5,7 @@ import {
   SINCE_STOPS,
 } from './streetLevelPresentation.js';
 
+import { t } from '../i18n/index.js';
 const RENDER_MODE_KEY = 'gev:street-level:render-mode';
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -228,7 +229,7 @@ export class StreetLevelControls {
       await this.actions.setEnabled?.(true);
     } catch (error) {
       this.actions.showToast?.(
-        error?.message || 'Street Level could not start',
+        error?.message || t('Street Level could not start'),
       );
       return false;
     }
@@ -240,7 +241,9 @@ export class StreetLevelControls {
     try {
       await this.actions.setEnabled?.(!enabled);
     } catch (error) {
-      this.actions.showToast?.(error?.message || 'Street Level toggle failed');
+      this.actions.showToast?.(
+        error?.message || t('Street Level toggle failed'),
+      );
     }
   }
 
@@ -272,7 +275,9 @@ export class StreetLevelControls {
     try {
       await this.actions.setEnabled?.(false);
     } catch (error) {
-      this.actions.showToast?.(error?.message || 'Street Level toggle failed');
+      this.actions.showToast?.(
+        error?.message || t('Street Level toggle failed'),
+      );
     }
   }
 
@@ -324,7 +329,7 @@ export class StreetLevelControls {
       wrap.classList.add('sl-viewer-wrap-expanded');
       wrap.setAttribute('role', 'dialog');
       wrap.setAttribute('aria-modal', 'true');
-      wrap.setAttribute('aria-label', 'Street-level image');
+      wrap.setAttribute('aria-label', t('Street-level image'));
       wrap.tabIndex = -1;
       wrap.focus({ preventScroll: true });
       this._watchModal(true);
@@ -356,9 +361,9 @@ export class StreetLevelControls {
       const icon = button.querySelector('.sl-btn-icon');
       const text = button.querySelector('.sl-btn-text');
       if (icon) icon.textContent = on ? '⤡' : '⤢';
-      if (text) text.textContent = on ? 'SHRINK' : 'EXPAND';
+      if (text) text.textContent = on ? t('SHRINK') : t('EXPAND');
       button.setAttribute('aria-pressed', String(on));
-      button.setAttribute('aria-label', on ? 'Shrink' : 'Expand');
+      button.setAttribute('aria-label', on ? t('Shrink') : t('Expand'));
     }
     if (!on && dock) this.actions.dockPanel?.();
     this._requestResize();

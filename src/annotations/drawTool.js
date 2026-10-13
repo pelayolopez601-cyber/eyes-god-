@@ -48,6 +48,7 @@ import {
   removeLastVertex,
 } from './drawMode.js';
 
+import { t } from '../i18n/index.js';
 /** The id this tool claims the pointer under. */
 export const DRAW_POINTER_OWNER = 'draw';
 const PREVIEW_DATA_SOURCE_NAME = 'gev-draw-preview';
@@ -200,7 +201,7 @@ export function initDrawTool({ viewer, annotations }) {
         `That shape already has ${MAX_VERTICES} points — finish it or press Backspace.`,
       );
     else if (reason === 'invalid')
-      setHint('That point is off the globe — click on the world.');
+      setHint(t('That point is off the globe — click on the world.'));
   };
   const onMove = (event) => {
     if (!session || session.shape === 'pin' || destroyed) return;
@@ -236,7 +237,7 @@ export function initDrawTool({ viewer, annotations }) {
         flyTo: false,
       });
       if (destroyed || attempt !== generation) return result;
-      if (result?.drawn === 0) setHint('That shape could not be placed.');
+      if (result?.drawn === 0) setHint(t('That shape could not be placed.'));
       return result;
     } catch (error) {
       if (destroyed || attempt !== generation) return null;
@@ -258,7 +259,7 @@ export function initDrawTool({ viewer, annotations }) {
     if (session) session = createDrawSession(shape);
     annotations.clear();
     syncPreview();
-    if (!destroyed && !active) setHint('Board cleared.');
+    if (!destroyed && !active) setHint(t('Board cleared.'));
   };
 
   // ---- keys: only while drawing, never while typing in another field ----

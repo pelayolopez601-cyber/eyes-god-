@@ -1,6 +1,6 @@
 /** Own panel position preferences, viewport clamping and drag listeners. */
+import { t } from '../i18n/index.js';
 import { RESIZE_DIRECTIONS, resizeBox } from './panelResize.js';
-
 /** Versioned localStorage namespace prefix to invalidate stale panel layouts. */
 const PANEL_LAYOUT_STORAGE_VERSION = 'v6';
 /**
@@ -221,7 +221,7 @@ export class PanelPositionControls {
       );
       if (hadOldPositions) {
         this._showToast(
-          'Panel layout updated — positions reset to new defaults',
+          t('Panel layout updated — positions reset to new defaults'),
         );
       }
     } catch {

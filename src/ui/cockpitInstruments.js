@@ -1,4 +1,5 @@
 /** Instrument values, routes and vision controls for the Cockpit controller. */
+import { t } from '../i18n/index.js';
 import {
   COCKPIT_VISION_MODES,
   normalizeCockpitVisionMode,
@@ -31,7 +32,7 @@ export function updateHud(
   const heading = normalizeHeading(this.heading ?? info.track ?? 0);
   if (this.callsign) {
     this.callsign.textContent =
-      info.callsign || info.registration || info.icao24 || 'AIRCRAFT';
+      info.callsign || info.registration || info.icao24 || t('AIRCRAFT');
   }
   const speedKt = Number.isFinite(info.velocityMps)
     ? info.velocityMps * 1.94384
@@ -126,14 +127,23 @@ export function updateHud(
     this.position.textContent = `${lat} · ${lon}`;
   }
   if (this.aircraftMeta) {
+    // State-sibling keys at the writer: each feed state translates
+    // independently so no state can leak English under other locales.
     const feedState = this.surfaceAcquiring
-      ? 'ACQUIRING SURFACE'
+      ? t('ACQUIRING SURFACE')
       : this.surfaceFallback
-        ? 'SURFACE FALLBACK'
+        ? t('SURFACE FALLBACK')
         : info.stale
-          ? 'STALE FEED'
-          : 'LIVE TRACK';
-    this.aircraftMeta.textContent = `${info.layerId === 'military' ? 'MILITARY' : 'COMMERCIAL'} · ${feedState} · COURSE ALIGNED`;
+          ? t('STALE FEED')
+          : t('LIVE TRACK');
+    this.aircraftMeta.textContent = t(
+      '{aircraftClass} · {feedState} · COURSE ALIGNED',
+      {
+        aircraftClass:
+          info.layerId === 'military' ? t('MILITARY') : t('COMMERCIAL'),
+        feedState,
+      },
+    );
   }
   this.updateRoute(info);
   if (
@@ -158,13 +168,13 @@ export function updateRoute(info) {
   const validDestination =
     Number.isFinite(destination?.lat) && Number.isFinite(destination?.lon);
   const routeLabel = (airport) =>
-    [airport?.code, airport?.name].filter(Boolean).join(' · ') || 'UNKNOWN';
+    [airport?.code, airport?.name].filter(Boolean).join(' · ') || t('UNKNOWN');
   if (this.routeFrom) this.routeFrom.textContent = routeLabel(origin);
   if (this.routeTo) this.routeTo.textContent = routeLabel(destination);
   if (this.routeStatus) {
     this.routeStatus.textContent = validDestination
-      ? 'ARROW · ESTIMATED DIRECTION'
-      : 'ROUTE DATA UNAVAILABLE';
+      ? t('ARROW · ESTIMATED DIRECTION')
+      : t('ROUTE DATA UNAVAILABLE');
   }
   if (this.route) this.route.hidden = !origin && !destination;
   if (
@@ -198,7 +208,9 @@ export function updateRoute(info) {
     );
   }
   if (this.routeDirectionLabel) {
-    this.routeDirectionLabel.textContent = `DEST ${String(Math.round(destinationBearing)).padStart(3, '0')}°`;
+    this.routeDirectionLabel.textContent = t('DEST {bearing}', {
+      bearing: `${String(Math.round(destinationBearing)).padStart(3, '0')}°`,
+    });
   }
 }
 
@@ -206,12 +218,14 @@ export function syncWeatherToggle(enabled) {
   if (!this.weatherToggle) return;
   const active = !!enabled;
   this.weatherToggle.setAttribute('aria-pressed', String(active));
-  this.weatherToggle.setAttribute(
-    'aria-label',
-    `${active ? 'Disable' : 'Enable'} cockpit weather effects`,
-  );
-  this.weatherToggle.title = `${active ? 'Disable' : 'Enable'} cockpit weather effects`;
-  if (this.weatherState) this.weatherState.textContent = active ? 'ON' : 'OFF';
+  const weatherLabel = active
+    ? t('Disable cockpit weather effects')
+    : t('Enable cockpit weather effects');
+  this.weatherToggle.setAttribute('aria-label', weatherLabel);
+  this.weatherToggle.title = weatherLabel;
+  if (this.weatherState) {
+    this.weatherState.textContent = active ? t('ON') : t('OFF');
+  }
 }
 
 export function setVisionMode(mode, { revealParameters = false } = {}) {
@@ -229,19 +243,23 @@ export function setVisionMode(mode, { revealParameters = false } = {}) {
   const names = {
     optical: 'Normal',
     crt: 'CRT',
-    nvg: 'Night vision',
-    thermal: 'Thermal',
-    anime: 'Anime',
-    noir: 'Noir',
-    snow: 'Snow',
+    nvg: t('Night vision'),
+    thermal: t('Thermal'),
+    anime: t('Anime'),
+    noir: t('Noir'),
+    snow: t('Snow'),
   };
   if (this.visionCurrent) {
     this.visionCurrent.dataset.cockpitVision = next;
     this.visionCurrent.setAttribute(
       'aria-label',
-      `Current cockpit vision style: ${names[next]}. Activate for next style.`,
+      t('Current cockpit vision style: {style}. Activate for next style.', {
+        style: names[next],
+      }),
     );
-    this.visionCurrent.title = `Current style: ${names[next]} — click for next`;
+    this.visionCurrent.title = t('Current style: {style} — click for next', {
+      style: names[next],
+    });
   }
   if (this.visionCurrentLabel)
     this.visionCurrentLabel.textContent = labels[next];
