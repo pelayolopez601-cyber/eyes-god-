@@ -21,7 +21,15 @@ export function adaptFirmsRecords(records) {
   for (const record of records) {
     const lat = Number(record?.lat);
     const lon = Number(record?.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (
+      !hasCoordinateValue(record?.lat) ||
+      !hasCoordinateValue(record?.lon) ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lon) > 180
+    )
+      continue;
     fires.push({
       index: fires.length,
       lat,
@@ -109,4 +117,11 @@ function clamp01(value) {
 function finiteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+function hasCoordinateValue(value) {
+  return (
+    typeof value === 'number' ||
+    (typeof value === 'string' && value.trim() !== '')
+  );
 }
