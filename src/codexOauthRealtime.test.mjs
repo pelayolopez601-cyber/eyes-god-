@@ -145,17 +145,20 @@ test('Codex OAuth reader enforces expiry margin and bounds tokens without exp by
 
 test('Codex login resolves an installed executable before PATH and starts browser auth detached', async () => {
   const checked = [];
+  // The resolver joins the home directory with the platform's own separator, so
+  // the fixture recognises the installed location the same way it builds it.
+  const installed = path.join('/home/fixture', '.local', 'bin', 'codex');
   assert.equal(
     resolveCodexExecutable({
       environment: {},
       home: '/home/fixture',
       access(candidate) {
         checked.push(candidate);
-        if (candidate.endsWith('/.local/bin/codex')) return;
+        if (candidate === installed) return;
         throw new Error('missing');
       },
     }),
-    path.join('/home/fixture', '.local', 'bin', 'codex'),
+    installed,
   );
   assert.equal(checked.length, 1);
 
