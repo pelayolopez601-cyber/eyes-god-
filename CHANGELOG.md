@@ -1,5 +1,7 @@
 # Changelog
 
+- Analyst queries preserve useful rows when an upstream timestamp is outside the supported date range.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
