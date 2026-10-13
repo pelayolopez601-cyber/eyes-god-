@@ -95,9 +95,10 @@
 
 ## [Unreleased]
 
-- Keep later satellites when a TLE catalog entry is missing an orbital line.
-  The parser skips the incomplete set and resumes at the next complete named
-  set, instead of losing the rest of the group (#906).
+- Keep later satellites when a TLE catalog entry is missing an orbital line or
+  pairs lines with mismatched NORAD catalog numbers. The parser skips corrupt sets
+  and resumes at the next complete named set, instead of losing the rest of the
+  group (#906, #936).
 
 - Add an experimental ChatGPT/Codex OAuth option for cloud voice in Provider
   Settings. API-key voice remains the default. Local sign-in can start from
