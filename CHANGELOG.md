@@ -1,5 +1,17 @@
 # Changelog
 
+- Add a keyless Avalanches layer for Norway. Varsom danger forecasts colour
+  each forecast region in the European danger-scale colours, and regObs
+  observations draw each reported avalanche from release to runout. Both play
+  over a ten-day window on an on-map panel: the past week as observed history,
+  where avalanches run down their paths in the order they happened and fade
+  with age, then today and Varsom's two forecast days, marked as forecasts,
+  with region colours blending day to day. Off-season the panel says why the
+  map is empty and replays the last season, opening on its busiest week, with a
+  bar per week to choose another. Clicking a region shows its ratings and the
+  forecaster's summary; clicking an avalanche shows its size, trigger, drop and
+  the observer who reported it.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
