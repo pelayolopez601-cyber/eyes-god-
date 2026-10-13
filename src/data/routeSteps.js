@@ -151,9 +151,15 @@ export function normalizeOsrmSteps(route) {
   for (const leg of route?.legs || []) {
     for (const raw of leg?.steps || []) {
       const location = raw?.maneuver?.location;
-      const lon = Number(location?.[0]);
-      const lat = Number(location?.[1]);
-      if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+      if (!Array.isArray(location)) continue;
+      const [lon, lat] = location;
+      if (
+        !Number.isFinite(lon) ||
+        !Number.isFinite(lat) ||
+        Math.abs(lon) > 180 ||
+        Math.abs(lat) > 90
+      )
+        continue;
       const type = cleanText(raw.maneuver?.type).toLowerCase() || 'continue';
       const step = {
         index: out.length,
