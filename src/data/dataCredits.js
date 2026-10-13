@@ -248,6 +248,12 @@ export const DATA_CREDITS = [
       'distributed by Statens vegvesen',
   },
   {
+    key: 'nyc-cctv',
+    html:
+      'CCTV cameras &amp; frames (New York City): ' +
+      '<a href="https://webcams.nyctmc.org/" target="_blank" rel="noopener">NYC DOT Traffic Management Center</a>',
+  },
+  {
     key: 'gbfs',
     html: 'Bikeshare availability: GBFS operator feeds (e.g. Austin BCycle)',
   },

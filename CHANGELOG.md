@@ -1,5 +1,14 @@
 # Changelog
 
+- Add New York City traffic cameras from the NYC DOT Traffic Management Center
+  as a CCTV pack. The camera list is one keyless JSON request to
+  `webcams.nyctmc.org/api/cameras`; frames are stills synthesized from each
+  camera UUID on that same host, so a catalog field cannot steer the proxy
+  off-host. Offline cameras are dropped. By default the 250 cameras nearest
+  the five borough cores load. `CCTV_NYC_ENABLED=0` turns the pack off and
+  `CCTV_NYC_MAX_SOURCES` changes the cap. The catalog-wide ceiling is
+  unchanged; extra cameras share it round-robin with the other packs.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
