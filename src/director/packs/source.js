@@ -41,6 +41,7 @@ export function createAssetDirectorySource({
       for (;;) {
         signal?.throwIfAborted();
         const { done, value } = await reader.read();
+        signal?.throwIfAborted();
         if (done) break;
         length += value.byteLength;
         if (length > maxBytes) throw new Error('Asset exceeds byte limit');
