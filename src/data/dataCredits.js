@@ -178,6 +178,14 @@ export const DATA_CREDITS = [
       '(CC BY 4.0)',
   },
   {
+    key: 'air-quality',
+    html:
+      'Air Quality &amp; Emissions: ' +
+      '<a href="https://open-meteo.com/en/licence" target="_blank" rel="noopener">Open-Meteo Air Quality</a> ' +
+      '(CC BY 4.0, CAMS / Copernicus Atmosphere) · ' +
+      '<a href="https://openaq.org" target="_blank" rel="noopener">OpenAQ</a>',
+  },
+  {
     key: 'google-news-rss',
     html:
       'Cockpit regional headlines: ' +
@@ -307,6 +315,10 @@ export const DATA_CREDITS = [
       'ECMWF does not accept any liability whatsoever for any error or omission in the data, their availability, or for any loss or damage arising from their use.',
   },
   // ── Bundled snapshots ───────────────────────────────────────────
+  {
+    key: 'power-plants',
+    html: 'Power Plants: World Resources Institute (WRI) Global Power Plant Database / OpenStreetMap',
+  },
   {
     key: 'dams',
     html: 'Dams: Open Infrastructure Map',
