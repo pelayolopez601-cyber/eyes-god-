@@ -147,7 +147,12 @@ export function tilesForBbox(bbox, z, { limit = Infinity, focus = null } = {}) {
         return Math.min(dx, n - dx) ** 2 + (tile.y - centre.y) ** 2;
       };
   // Each tile's distance is computed once; ties keep their row order.
-  const ranked = tiles
+  const unique = [
+    ...new Map(
+      tiles.map((tile) => [`${tile.x}/${tile.y}/${tile.z}`, tile]),
+    ).values(),
+  ];
+  const ranked = unique
     .map((tile) => ({ tile, d: distance2(tile) }))
     .sort((a, b) => a.d - b.d)
     .map(({ tile }) => tile);

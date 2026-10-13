@@ -1,5 +1,8 @@
 # Changelog
 
+- Street Level counts unique tiles before ranking so overlapping dateline halves
+  in polar views do not waste slots in the 16-tile overview budget.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 
